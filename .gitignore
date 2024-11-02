@@ -14,3 +14,5 @@ _deps
 debug/
 bin/
 release/
+test/
+build/
