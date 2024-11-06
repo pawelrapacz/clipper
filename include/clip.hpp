@@ -46,7 +46,7 @@ namespace CLI
 
         template<typename V>
         option& set(Tp& ref, V def) {
-            static_assert(std::is_convertible<Tp, V>::value, "Type T must be implicitly convertible to type V");
+            static_assert(std::is_convertible<V, Tp>::value, "Type V must be convertible to type Tp");
 
             _ref = &ref;
             *_ref = static_cast<Tp>(def);
