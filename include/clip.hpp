@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <memory>
 #include <type_traits>
+#include <utility>
 
 
 namespace CLI
@@ -128,8 +129,7 @@ namespace CLI
 
     using option_map = std::unordered_map<std::string, std::shared_ptr<option_base>>;
     using flag_map = std::unordered_map<std::string, std::shared_ptr<flag>>;
-    using name_map = std::map<std::string, std::string>;
-
+    using info_arg = std::pair<std::string, std::string>;
 
 
 
@@ -143,8 +143,8 @@ namespace CLI
             : _app_name(app_name) {}
 
 
-        clip(cstr app_name, cstr version, cstr author, cstr license)
-            : _app_name(app_name), _version(version), _author(author), _license(license) {}
+        clip(cstr app_name, cstr version, cstr author, cstr license_notice)
+            : _app_name(app_name), _version(version), _author(author), _license_notice(license_notice) {}
 
 
         ~clip() = default;
@@ -210,14 +210,14 @@ namespace CLI
 
 
 
-        clip& license(cstr license_info) noexcept {
-            _license = license_info;
+        clip& license(cstr license_notice) noexcept {
+            _license_notice = license_notice;
             return *this;
         }
 
 
         const std::string& license() const noexcept {
-            return _license;
+            return _license_notice;
         }
 
 
@@ -272,7 +272,34 @@ namespace CLI
 
 
 
+        void help_flag(cstr name, cstr alt_name = "") {
+            _help_flag = std::make_pair<std::string, std::string>(name, alt_name);
+        }
+
+
+
+        void version_flag(cstr name, cstr alt_name = "") {
+            _version_flag = std::make_pair<std::string, std::string>(name, alt_name);
+        }
+
+
+
         bool parse(int argc, char** argv) {
+            const std::string iarg { argv[1] };
+            if (argc == 2 && (iarg == _help_flag.first || iarg == _help_flag.second)) {
+                /* implement help */
+                return true;
+            }
+            else if (argc == 2 && (iarg == _version_flag.first || iarg == _version_flag.second)) {
+                std::cout << 
+                _app_name << " " << 
+                _version << "\n" << 
+                "Author: " << _author << "\n" <<
+                _license_notice << std::endl;
+                return true;
+            }
+
+
             for (int i = 1; i < argc; i++) {
                 if (_options.contains(argv[i])) {
                     if ( auto optString = std::dynamic_pointer_cast<option<std::string>>(_options[argv[i]]) ) {
@@ -324,14 +351,17 @@ namespace CLI
 
     private:
 
+
         std::string _app_name;
         std::string _app_description;
         std::string _synopsis;
         std::string _version;
         std::string _author;
-        std::string _license;
+        std::string _license_notice;
         std::string _web_link;
 
+        info_arg _help_flag;
+        info_arg _version_flag; 
         option_map _options;
         flag_map _flags;
     };
