@@ -14,19 +14,33 @@ namespace CLI
 
     using cstr = const char*;
 
-
     class clip;
 
 
     template<typename T>
-    concept valid_option_type = std::is_integral_v<T> ||
-                                std::is_floating_point_v<T> ||
+    concept valid_option_type = std::is_same_v<T, int> ||
+                                std::is_same_v<T, float> ||
                                 std::is_same_v<T, char> ||
                                 std::is_same_v<T, std::string>;
 
+
+
+    // allows casting option pointers
+    class option_base {
+    protected:
+        friend class clip;
+    
+    public:
+        virtual ~option_base() = default;
+    };
+
+
+
     template<valid_option_type Tp>
-    class option {
-        Tp* _ref;
+    class option : public option_base {
+        friend class clip;
+
+        Tp* _ref = nullptr;
         std::string _doc;
         bool _req;
         bool _is_set{ false };
@@ -71,7 +85,9 @@ namespace CLI
 
 
     class flag {
-        bool* _ref;
+        friend class clip;
+
+        bool* _ref = nullptr;
         std::string _doc;
         bool _req;
         bool _is_set{ false };
@@ -110,7 +126,7 @@ namespace CLI
 
 
 
-    using option_map = std::unordered_map<std::string, std::shared_ptr<void>>;
+    using option_map = std::unordered_map<std::string, std::shared_ptr<option_base>>;
     using flag_map = std::unordered_map<std::string, std::shared_ptr<flag>>;
     using name_map = std::map<std::string, std::string>;
 
@@ -256,14 +272,54 @@ namespace CLI
 
 
 
-        // bool parse(int argc, char** argv) {
+        bool parse(int argc, char** argv) {
+            for (int i = 1; i < argc; i++) {
+                if (_options.contains(argv[i])) {
+                    if ( auto optString = std::dynamic_pointer_cast<option<std::string>>(_options[argv[i]]) ) {
+                        i = parse_option_string_values(argc, argv, i + 1, optString);
+                        continue;
+                    }
+                    else if (auto optInt = std::dynamic_pointer_cast<option<int>>(_options[argv[i]]) )
+                        *optInt->_ref = std::atoi(argv[i + 1]);
 
-        // }
+                    else if ( auto optFloat  = std::dynamic_pointer_cast<option<float>>(_options[argv[i]]) )
+                        *optFloat->_ref = std::atof(argv[i + 1]);
+
+                    else if ( auto optChar = std::dynamic_pointer_cast<option<char>>(_options[argv[i]]) )
+                        *optChar->_ref = argv[i + 1][0];
+
+                    i++;
+                }
+                else if (_flags.contains(argv[i])) {
+                    *(_flags[argv[i]]->_ref) = true;
+                }
+                else {
+                    return false;
+                }
+            }
+
+            return true;
+        }
 
 
-        // bool get_option(cstr name) const;
-        // bool get_flag(cstr name) const;
         // const std::string help() const noexcept;
+ 
+
+    private:
+        // returns the index of last argument (value) that isn't a option or flag
+        int parse_option_string_values(int argc, char** argv, int value_index, std::shared_ptr<option<std::string>> opt) {
+            if (not ( _options.contains(argv[value_index]) || _flags.contains(argv[value_index]) ) && value_index < argc) {
+                *(opt->_ref) = argv[value_index];
+                value_index++;
+            }
+
+            while (not ( _options.contains(argv[value_index]) || _flags.contains(argv[value_index]) ) && value_index < argc) {
+                opt->_ref->append(" ").append(argv[value_index]); // weird but it's c++ <3
+                value_index++;
+            }
+
+            return value_index - 1;
+        }
 
 
     private:
