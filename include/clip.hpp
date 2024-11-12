@@ -9,8 +9,10 @@
 #pragma once
 
 #include <iostream>
+#include <iomanip>
 #include <string>
 #include <cstring>
+// #include <sstream>
 #include <map>
 #include <unordered_map>
 #include <memory>
@@ -38,7 +40,11 @@ namespace CLI
     class option_base {
     protected:
         friend class clip;
-    
+
+        std::string _doc;
+        bool _req { false };
+        bool _is_set{ false };
+
     public:
         virtual ~option_base() = default;
     };
@@ -50,9 +56,6 @@ namespace CLI
         friend class clip;
 
         Tp* _ref = nullptr;
-        std::string _doc;
-        bool _req { false };
-        bool _is_set{ false };
 
     public:
         option() = default;
@@ -135,6 +138,7 @@ namespace CLI
 
 
 
+    using arg_name_map = std::map<std::string, std::string>;
     using option_map = std::unordered_map<std::string, std::shared_ptr<option_base>>;
     using flag_map = std::unordered_map<std::string, std::shared_ptr<flag>>;
     using info_flag = std::pair<std::string, std::string>;
@@ -251,6 +255,7 @@ namespace CLI
         template<valid_option_type Tp>
         option<Tp>& add_option(cstr name) {
             _options[name] = std::make_shared<option<Tp>>();
+            _option_names[name];
             return *std::static_pointer_cast<option<Tp>>(_options[name]);
         }
 
@@ -260,6 +265,7 @@ namespace CLI
         option<Tp>& add_option(cstr name, cstr alt_name) {
             _options[name] = std::make_shared<option<Tp>>();
             _options[alt_name] = _options[name];
+            _option_names[name] = alt_name;
             return *std::static_pointer_cast<option<Tp>>(_options[name]);
         }
 
@@ -267,6 +273,7 @@ namespace CLI
 
         flag& add_flag(cstr name) {
             _flags[name] = std::make_shared<flag>();
+            _flag_names[name];
             return *_flags[name];
         }
 
@@ -275,6 +282,7 @@ namespace CLI
         flag& add_flag(cstr name, cstr alt_name) {
             _flags[name] = std::make_shared<flag>();
             _flags[alt_name] = _flags[name];
+            _flag_names[name] = alt_name;
             return *_flags[name];
         }
 
@@ -298,15 +306,14 @@ namespace CLI
 
             const std::string iarg { argv[1] };
             if (argc == 2 && (iarg == _help_flag.first || iarg == _help_flag.second)) {
-                /* implement help */
+                display_help();
                 return true;
             }
             else if (argc == 2 && (iarg == _version_flag.first || iarg == _version_flag.second)) {
                 std::cout << 
                 _app_name << " " << 
                 _version << "\n" << 
-                "Author: " << _author << "\n" <<
-                _license_notice << std::endl;
+                _author << "\n";
                 return true;
             }
 
@@ -340,8 +347,6 @@ namespace CLI
         }
 
 
-        // const std::string help() const noexcept;
- 
 
     private:
         // returns the index of last argument (value) that isn't a option or flag
@@ -360,12 +365,54 @@ namespace CLI
         }
 
 
+
+        void display_help() const noexcept {
+            if (not _app_description.empty())
+                std::cout << "DESCRIPTION\n\t" << _app_description << "\n\n";
+
+
+            std::cout << "SYNOPSIS\n\t\t" <<
+            _app_name << "\n\n"
+            
+
+            "FLAGS\n";
+            if (not _help_flag.first.empty())
+                std::cout << "\t\t" << (_help_flag.second.empty() ? "" : _help_flag.second + ", ") << _help_flag.first << "\t\t" <<
+                "displays help\n";
+
+            if (not _version_flag.first.empty())
+                std::cout << "\t\t" << (_version_flag.second.empty() ? "" : _version_flag.second + ", ") << _version_flag.first << "\t\t" <<
+                "displays version information\n";
+
+            for (auto [name, alt_name] : _flag_names) {
+                std::cout << "\t\t" << (alt_name.empty() ? "" : alt_name + ", ") << name << "\t\t" << _flags.at(name)->_doc << "\n";
+            }
+
+
+            std::cout << "\nOPTIONS\n";
+            for (auto [name, alt_name] : _option_names) {
+                std::cout << "\t\t" << (alt_name.empty() ? "" : alt_name + ", ") << name << " <>\t\t" << _options.at(name)->_doc << "\n";
+            }
+
+
+            if (not _license_notice.empty())
+                std::cout << "\nLICENSE\n\t" << _license_notice << "\n";
+
+            if (not _author.empty())
+                std::cout << "\nAUTHOR\n\t" << _author << "\n";
+
+            if (not _web_link.empty())
+                std::cout << "\n" << _web_link << "\n";
+        }
+
+
+
     private:
 
 
         std::string _app_name;
         std::string _app_description;
-        std::string _synopsis;
+        // std::string _synopsis;
         std::string _version;
         std::string _author;
         std::string _license_notice;
@@ -375,6 +422,8 @@ namespace CLI
         info_flag _version_flag; 
         option_map _options;
         flag_map _flags;
+        arg_name_map _option_names;
+        arg_name_map _flag_names;
     };
 
 
