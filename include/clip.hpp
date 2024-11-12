@@ -43,7 +43,7 @@ namespace CLI
 
         Tp* _ref = nullptr;
         std::string _doc;
-        bool _req;
+        bool _req { false };
         bool _is_set{ false };
 
     public:
@@ -90,7 +90,7 @@ namespace CLI
 
         bool* _ref = nullptr;
         std::string _doc;
-        bool _req;
+        bool _req { false };
         bool _is_set{ false };
 
     public:
@@ -129,7 +129,7 @@ namespace CLI
 
     using option_map = std::unordered_map<std::string, std::shared_ptr<option_base>>;
     using flag_map = std::unordered_map<std::string, std::shared_ptr<flag>>;
-    using info_arg = std::pair<std::string, std::string>;
+    using info_flag = std::pair<std::string, std::string>;
 
 
 
@@ -284,7 +284,10 @@ namespace CLI
 
 
 
-        bool parse(int argc, char** argv) {
+        bool parse(int argc, char* argv[]) {
+            if (1 == argc)
+                return true;
+
             const std::string iarg { argv[1] };
             if (argc == 2 && (iarg == _help_flag.first || iarg == _help_flag.second)) {
                 /* implement help */
@@ -335,12 +338,12 @@ namespace CLI
     private:
         // returns the index of last argument (value) that isn't a option or flag
         int parse_option_string_values(int argc, char** argv, int value_index, std::shared_ptr<option<std::string>> opt) {
-            if (not ( _options.contains(argv[value_index]) || _flags.contains(argv[value_index]) ) && value_index < argc) {
+            if (value_index < argc && not ( _options.contains(argv[value_index]) || _flags.contains(argv[value_index]) )) {
                 *(opt->_ref) = argv[value_index];
                 value_index++;
             }
 
-            while (not ( _options.contains(argv[value_index]) || _flags.contains(argv[value_index]) ) && value_index < argc) {
+            while (value_index < argc && not ( _options.contains(argv[value_index]) || _flags.contains(argv[value_index]) )) {
                 opt->_ref->append(" ").append(argv[value_index]); // weird but it's c++ <3
                 value_index++;
             }
@@ -360,8 +363,8 @@ namespace CLI
         std::string _license_notice;
         std::string _web_link;
 
-        info_arg _help_flag;
-        info_arg _version_flag; 
+        info_flag _help_flag;
+        info_flag _version_flag; 
         option_map _options;
         flag_map _flags;
     };
