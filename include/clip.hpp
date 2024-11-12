@@ -1,3 +1,11 @@
+/**
+ * MIT License
+ * Copyright (c) 2024 Paweł Rapacz
+ *
+ * See the LICENSE file in the root directory of this source tree for more information.
+ */
+
+
 #pragma once
 
 #include <iostream>
