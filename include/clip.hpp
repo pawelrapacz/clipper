@@ -62,6 +62,9 @@ namespace CLI
 
         inline static uint32_t any_req { };
 
+    protected:
+        virtual std::string value_info() const noexcept = 0;
+
     public:
         virtual ~option_base() = default;
     };
@@ -77,7 +80,7 @@ namespace CLI
 
 
 
-    private:
+    protected:
         inline void operator=(Tp val) {
             if (_match_list.empty() || _match_list.contains(val)) {
                 *_ref = val;
@@ -89,8 +92,19 @@ namespace CLI
 
 
 
-        inline bool match_list() const noexcept {
-            return not _match_list.empty();
+        std::string value_info() const noexcept override {
+            if (_match_list.empty()) {
+                return _vname;
+            }
+            else {
+                std::string list;
+
+                for (Tp i : _match_list)
+                    list += i + " ";
+
+                list.pop_back();
+                return "[" + list + "]";
+            }
         }
 
 
@@ -168,6 +182,10 @@ namespace CLI
         friend class clip;
 
         bool* _ref = nullptr;
+
+    protected:
+        std::string value_info() const noexcept override { return ""; } // delete - unused function
+
 
     public:
         flag() = default;
@@ -440,8 +458,7 @@ namespace CLI
 
         
         inline void display_help() const noexcept {
-            constexpr int space = 30;
-
+            constexpr int space = 35;
 
             auto synopsis = [&]()->std::string {
                 std::string snp = _app_name + " ";
@@ -452,7 +469,7 @@ namespace CLI
 
                 for (auto [name, alt_name] : _option_names)
                     if (_options.at(name)->_req)
-                        snp += alt_name + " <" + _options.at(name)->_vname + "> ";
+                        snp += alt_name + " <" + _options.at(name)->value_info() + "> ";
 
                 for (auto [name, alt_name] : _flag_names)
                     if (_flags.at(name)->_req)
@@ -493,8 +510,8 @@ namespace CLI
             std::cout << "\nOPTIONS\n";
             for (auto [name, alt_name] : _option_names) {
                 std::cout << "\t" << std::left << std::setw(space) << std::setfill(' ') <<
-                (alt_name.empty() ? "" : alt_name + ", ") + name +
-                " <" + _options.at(name)->_vname + ">" <<
+                (alt_name.empty() ? "" : alt_name + ", ") + name + " " +
+                _options.at(name)->value_info()<<
                 _options.at(name)->_doc << "\n";
             }
 
