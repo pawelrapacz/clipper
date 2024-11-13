@@ -24,17 +24,6 @@
 
 namespace CLI
 {
-    
-    template<typename T>
-    concept arg_types =
-        std::is_same_v<T, int>  ||
-        std::is_same_v<T, float>||
-        std::is_same_v<T, char> ||
-        std::is_same_v<T, bool> ||
-        std::is_same_v<T, std::string>;
-
-
-
     template<typename T>
     concept option_types = 
         std::is_same_v<T, int>  ||
@@ -48,16 +37,17 @@ namespace CLI
 
     class option_base;
 
-    template<arg_types Tp>
+    template<option_types Tp>
     class option;
+
+    class flag;
 
 
     using cstr = const char*;
-    using flag = option<bool>;
     using info_flag = std::pair<std::string, std::string>;
     using arg_name_map = std::map<std::string, std::string>;
     using option_map = std::unordered_map<std::string, std::shared_ptr<option_base>>;
-    using flag_map = std::unordered_map<std::string, std::shared_ptr<option<bool>>>;
+    using flag_map = std::unordered_map<std::string, std::shared_ptr<flag>>;
 
 
 
@@ -78,7 +68,7 @@ namespace CLI
 
 
 
-    template<arg_types Tp>
+    template<option_types Tp>
     class option : public option_base {
         friend class clip;
 
@@ -166,6 +156,48 @@ namespace CLI
 
 
         option& req() {
+            _req = true;
+            any_req++;
+            return *this;
+        }
+    };
+
+
+
+    class flag : public option_base {
+        friend class clip;
+
+        bool* _ref = nullptr;
+
+    public:
+        flag() = default;
+        ~flag() = default;
+
+
+        flag& set(bool& ref) {
+            _ref = &ref;
+            *_ref = { };
+            return *this;
+        }
+
+
+
+        flag& set(bool& ref, bool def) {
+            _ref = &ref;
+            *_ref = def;
+            return *this;
+        }
+
+
+
+        flag& doc(cstr doc) {
+            _doc = doc;
+            return *this;
+        }
+
+
+
+        flag& req() {
             _req = true;
             any_req++;
             return *this;
