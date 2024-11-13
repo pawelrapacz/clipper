@@ -10,9 +10,9 @@
 
 #include <iostream>
 #include <iomanip>
+#include <stdexcept>
 #include <string>
 #include <cstring>
-// #include <sstream>
 #include <map>
 #include <unordered_map>
 #include <queue>
@@ -316,7 +316,7 @@ namespace CLI
                 return true;
             }
 
-            if (args.size() == 1 && option_base::any_req)
+            if (args.size() < 2 && option_base::any_req)
                 return false;
 
 
@@ -341,6 +341,10 @@ namespace CLI
         inline void set_option(std::queue<std::string>& args) {
             std::shared_ptr<option_base>& opt = _options[args.front()];
             args.pop();
+            
+            if (args.empty())
+                throw std::logic_error("Not enough arguments");
+
 
             if ( auto optString = std::dynamic_pointer_cast<option<std::string>>(opt) )
                 *optString->_ref = args.front();
@@ -386,7 +390,7 @@ namespace CLI
         inline void display_help() const noexcept {
             constexpr int space = 30;
 
-            
+
             auto synopsis = [&]()->std::string {
                 std::string snp = _app_name + " ";
 
