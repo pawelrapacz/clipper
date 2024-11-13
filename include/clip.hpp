@@ -68,7 +68,7 @@ namespace CLI
         std::string _doc;
         bool _req { false };
 
-        inline static bool any_req { false };
+        inline static uint32_t any_req { };
 
     public:
         virtual ~option_base() = default;
@@ -136,7 +136,7 @@ namespace CLI
 
         option& req() {
             _req = true;
-            any_req = true;
+            any_req++;
             return *this;
         }
     };
@@ -298,6 +298,8 @@ namespace CLI
 
 
         bool parse(int argc, char* argv[]) {
+            uint32_t req_count = option_base::any_req;
+
             std::queue<std::string> args;
             for (int i = 1; i < argc; i++) // argv[0] is the command name, it is meant to be omitted
                 args.push(argv[i]);
@@ -321,16 +323,24 @@ namespace CLI
 
 
             while (not args.empty()) {
-                if (_options.contains(args.front())) 
+                if (_options.contains(args.front())) {
+                    if (_options.at(args.front())->_req) req_count--;
+                    
                     try { set_option(args); }
                     catch (std::exception e) { return false; }
+                }
                 
-                else if (_flags.contains(args.front()))
+                else if (_flags.contains(args.front())) {
+                    if (_flags.at(args.front())->_req) req_count--;
                     set_flag(args);
+                }
                 
                 else
                     return false;
             }
+
+            if (req_count)
+                return false;
 
             return true;
         }
