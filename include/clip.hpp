@@ -64,6 +64,7 @@ namespace CLI
     protected:
         friend class clip;
 
+        cstr _vname;
         std::string _doc;
         bool _req { false };
 
@@ -86,7 +87,6 @@ namespace CLI
         ~option() = default;
 
 
-        
         option& set(Tp& ref) {
             _ref = &ref;
             *_ref = { };
@@ -99,6 +99,27 @@ namespace CLI
         option& set(Tp& ref, V def) {
             static_assert(std::is_convertible<V, Tp>::value, "Type V must be convertible to type Tp");
 
+            _ref = &ref;
+            *_ref = static_cast<Tp>(def);
+            return *this;
+        }
+
+
+        
+        option& set(cstr value_name, Tp& ref) {
+            _vname = value_name;
+            _ref = &ref;
+            *_ref = { };
+            return *this;
+        }
+
+
+
+        template<typename V>
+        option& set(cstr value_name, Tp& ref, V def) {
+            static_assert(std::is_convertible<V, Tp>::value, "Type V must be convertible to type Tp");
+
+            _vname = value_name;
             _ref = &ref;
             *_ref = static_cast<Tp>(def);
             return *this;
@@ -363,31 +384,60 @@ namespace CLI
 
         
         inline void display_help() const noexcept {
+            constexpr int space = 30;
+
+            
+            auto synopsis = [&]()->std::string {
+                std::string snp = _app_name + " ";
+
+                if (not option_base::any_req)
+                    return snp + "[...]";
+
+
+                for (auto [name, alt_name] : _option_names)
+                    if (_options.at(name)->_req)
+                        snp += alt_name + " <" + _options.at(name)->_vname + "> ";
+
+                for (auto [name, alt_name] : _flag_names)
+                    if (_flags.at(name)->_req)
+                        snp += alt_name + " ";
+
+                return snp + "[...]";
+            };
+
+
+
             if (not _app_description.empty())
                 std::cout << "DESCRIPTION\n\t" << _app_description << "\n\n";
 
 
-            std::cout << "SYNOPSIS\n\t\t" <<
-            _app_name << "\n\n"
+            std::cout << "SYNOPSIS\n\t" << synopsis() << "\n";
             
 
-            "FLAGS\n";
+            std::cout << "\nFLAGS\n";
             if (not _help_flag.first.empty())
-                std::cout << "\t\t" << (_help_flag.second.empty() ? "" : _help_flag.second + ", ") << _help_flag.first << "\t\t" <<
+                std::cout << "\t" << std::left << std::setw(space) << std::setfill(' ') <<
+                (_help_flag.second.empty() ? "" : _help_flag.second + ", ") + _help_flag.first <<
                 "displays help\n";
 
             if (not _version_flag.first.empty())
-                std::cout << "\t\t" << (_version_flag.second.empty() ? "" : _version_flag.second + ", ") << _version_flag.first << "\t\t" <<
+                std::cout << "\t" << std::left << std::setw(space) << std::setfill(' ') <<
+                (_version_flag.second.empty() ? "" : _version_flag.second + ", ") + _version_flag.first <<
                 "displays version information\n";
 
             for (auto [name, alt_name] : _flag_names) {
-                std::cout << "\t\t" << (alt_name.empty() ? "" : alt_name + ", ") << name << "\t\t" << _flags.at(name)->_doc << "\n";
+                std::cout << "\t" << std::left << std::setw(space) << std::setfill(' ') <<
+                (alt_name.empty() ? "" : alt_name + ", ") + name <<
+                _flags.at(name)->_doc << "\n";
             }
 
 
             std::cout << "\nOPTIONS\n";
             for (auto [name, alt_name] : _option_names) {
-                std::cout << "\t\t" << (alt_name.empty() ? "" : alt_name + ", ") << name << " <>\t\t" << _options.at(name)->_doc << "\n";
+                std::cout << "\t" << std::left << std::setw(space) << std::setfill(' ') <<
+                (alt_name.empty() ? "" : alt_name + ", ") + name +
+                " <" + _options.at(name)->_vname + ">" <<
+                _options.at(name)->_doc << "\n";
             }
 
 
