@@ -16,6 +16,7 @@
 #include <map>
 #include <unordered_map>
 #include <queue>
+#include <set>
 #include <memory>
 #include <type_traits>
 #include <utility>
@@ -65,8 +66,8 @@ namespace CLI
     protected:
         friend class clip;
 
-        cstr _vname;
-        cstr _doc;
+        std::string _vname;
+        std::string _doc;
         bool _req { false };
 
         inline static uint32_t any_req { };
@@ -82,6 +83,27 @@ namespace CLI
         friend class clip;
 
         Tp* _ref = nullptr;
+        std::set<Tp> _match_list;
+
+
+
+    private:
+        inline void operator=(Tp val) {
+            if (_match_list.empty() || _match_list.contains(val)) {
+                *_ref = val;
+            }
+            else {
+                throw std::logic_error("Value is not allowed");
+            }
+        }
+
+
+
+        inline bool match_list() const noexcept {
+            return not _match_list.empty();
+        }
+
+
 
     public:
         option() = default;
@@ -123,6 +145,14 @@ namespace CLI
             _vname = value_name;
             _ref = &ref;
             *_ref = static_cast<Tp>(def);
+            return *this;
+        }
+
+
+        template<typename... Args>
+        option& match(Args... val) {
+            static_assert((std::is_convertible<std::decay_t<Args>, Tp>::value && ...), "All arguments must be of type Tp");
+            (_match_list.insert(std::forward<Args>(val)), ... );
             return *this;
         }
 
@@ -328,6 +358,7 @@ namespace CLI
                 
                 else if (_flags.contains(args.front())) {
                     if (_flags.at(args.front())->_req) req_count--;
+
                     set_flag(args);
                 }
                 
@@ -353,16 +384,16 @@ namespace CLI
 
 
             if ( auto optString = std::dynamic_pointer_cast<option<std::string>>(opt) )
-                *optString->_ref = args.front();
+                *optString = args.front();
             
             else if ( auto optInt = std::dynamic_pointer_cast<option<int>>(opt) )
-                *optInt->_ref = std::stoi(args.front());
+                *optInt = std::stoi(args.front());
             
             else if ( auto optFloat  = std::dynamic_pointer_cast<option<float>>(opt) )
-                *optFloat->_ref = std::stof(args.front());
+                *optFloat = std::stof(args.front());
             
             else if ( auto optChar = std::dynamic_pointer_cast<option<char>>(opt) )
-                *optChar->_ref = args.front().front();
+                *optChar = args.front().front();
             
             args.pop();
         }
@@ -408,15 +439,17 @@ namespace CLI
             
 
             std::cout << "\nFLAGS\n";
-            if (not _help_flag.first.empty())
+            if (not _help_flag.first.empty()) {
                 std::cout << "\t" << std::left << std::setw(space) << std::setfill(' ') <<
                 (_help_flag.second.empty() ? "" : _help_flag.second + ", ") + _help_flag.first <<
                 "displays help\n";
+            }
 
-            if (not _version_flag.first.empty())
+            if (not _version_flag.first.empty()) {
                 std::cout << "\t" << std::left << std::setw(space) << std::setfill(' ') <<
                 (_version_flag.second.empty() ? "" : _version_flag.second + ", ") + _version_flag.first <<
                 "displays version information\n";
+            }
 
             for (auto [name, alt_name] : _flag_names) {
                 std::cout << "\t" << std::left << std::setw(space) << std::setfill(' ') <<
