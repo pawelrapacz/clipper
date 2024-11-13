@@ -42,6 +42,7 @@ namespace CLI
         std::is_same_v<T, std::string>;
 
 
+
     class clip;
 
     class option_base;
@@ -65,7 +66,7 @@ namespace CLI
         friend class clip;
 
         cstr _vname;
-        std::string _doc;
+        cstr _doc;
         bool _req { false };
 
         inline static uint32_t any_req { };
@@ -187,11 +188,6 @@ namespace CLI
         const std::string& description() const noexcept {
             return _app_description;
         }
-
-
-
-        // clip& synopsis(cstr synopsis) noexcept;
-        //  const std::string& synopsis() const noexcept;
 
 
 
@@ -379,23 +375,6 @@ namespace CLI
         }
 
 
-
-        // returns the index of last argument (value) that isn't a option or flag
-        // int parse_option_string_values(int argc, char** argv, int value_index, std::shared_ptr<option<std::string>> opt) {
-        //     if (value_index < argc && not ( _options.contains(argv[value_index]) || _flags.contains(argv[value_index]) )) {
-        //         *(opt->_ref) = argv[value_index];
-        //         value_index++;
-        //     }
-
-        //     while (value_index < argc && not ( _options.contains(argv[value_index]) || _flags.contains(argv[value_index]) )) {
-        //         opt->_ref->append(" ").append(argv[value_index]); // weird but it's c++ <3
-        //         value_index++;
-        //     }
-
-        //     return value_index - 1;
-        // }
-
-
         
         inline void display_help() const noexcept {
             constexpr int space = 30;
@@ -470,7 +449,6 @@ namespace CLI
     private:
         std::string _app_name;
         std::string _app_description;
-        // std::string _synopsis;
         std::string _version;
         std::string _author;
         std::string _license_notice;
