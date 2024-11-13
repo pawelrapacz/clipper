@@ -15,6 +15,7 @@
 // #include <sstream>
 #include <map>
 #include <unordered_map>
+#include <queue>
 #include <memory>
 #include <type_traits>
 #include <utility>
@@ -65,7 +66,8 @@ namespace CLI
 
         std::string _doc;
         bool _req { false };
-        bool _is_set{ false };
+
+        inline static bool any_req { false };
 
     public:
         virtual ~option_base() = default;
@@ -87,6 +89,7 @@ namespace CLI
         
         option& set(Tp& ref) {
             _ref = &ref;
+            *_ref = { };
             return *this;
         }
 
@@ -112,6 +115,7 @@ namespace CLI
 
         option& req() {
             _req = true;
+            any_req = true;
             return *this;
         }
     };
@@ -273,15 +277,17 @@ namespace CLI
 
 
         bool parse(int argc, char* argv[]) {
-            if (1 == argc)
-                return true;
+            std::queue<std::string> args;
+            for (int i = 1; i < argc; i++) // argv[0] is the command name, it is meant to be omitted
+                args.push(argv[i]);
 
-            const std::string iarg { argv[1] };
-            if (argc == 2 && (iarg == _help_flag.first || iarg == _help_flag.second)) {
+
+            if (args.size() == 1 && (args.front() == _help_flag.first || args.front() == _help_flag.second)) {
                 display_help();
                 return true;
             }
-            else if (argc == 2 && (iarg == _version_flag.first || iarg == _version_flag.second)) {
+
+            if (args.size() == 1 && (args.front() == _version_flag.first || args.front() == _version_flag.second)) {
                 std::cout << 
                 _app_name << " " << 
                 _version << "\n" << 
@@ -289,30 +295,20 @@ namespace CLI
                 return true;
             }
 
+            if (args.size() == 1 && option_base::any_req)
+                return false;
 
-            for (int i = 1; i < argc; i++) {
-                if (_options.contains(argv[i])) {
-                    if ( auto optString = std::dynamic_pointer_cast<option<std::string>>(_options[argv[i]]) ) {
-                        i = parse_option_string_values(argc, argv, i + 1, optString);
-                        continue;
-                    }
-                    else if (auto optInt = std::dynamic_pointer_cast<option<int>>(_options[argv[i]]) )
-                        *optInt->_ref = std::atoi(argv[i + 1]);
 
-                    else if ( auto optFloat  = std::dynamic_pointer_cast<option<float>>(_options[argv[i]]) )
-                        *optFloat->_ref = std::atof(argv[i + 1]);
-
-                    else if ( auto optChar = std::dynamic_pointer_cast<option<char>>(_options[argv[i]]) )
-                        *optChar->_ref = argv[i + 1][0];
-
-                    i++;
-                }
-                else if (_flags.contains(argv[i])) {
-                    *(_flags[argv[i]]->_ref) = true;
-                }
-                else {
+            while (not args.empty()) {
+                if (_options.contains(args.front())) 
+                    try { set_option(args); }
+                    catch (std::exception e) { return false; }
+                
+                else if (_flags.contains(args.front()))
+                    set_flag(args);
+                
+                else
                     return false;
-                }
             }
 
             return true;
@@ -321,24 +317,52 @@ namespace CLI
 
 
     private:
-        // returns the index of last argument (value) that isn't a option or flag
-        int parse_option_string_values(int argc, char** argv, int value_index, std::shared_ptr<option<std::string>> opt) {
-            if (value_index < argc && not ( _options.contains(argv[value_index]) || _flags.contains(argv[value_index]) )) {
-                *(opt->_ref) = argv[value_index];
-                value_index++;
-            }
+        inline void set_option(std::queue<std::string>& args) {
+            std::shared_ptr<option_base>& opt = _options[args.front()];
+            args.pop();
 
-            while (value_index < argc && not ( _options.contains(argv[value_index]) || _flags.contains(argv[value_index]) )) {
-                opt->_ref->append(" ").append(argv[value_index]); // weird but it's c++ <3
-                value_index++;
-            }
-
-            return value_index - 1;
+            if ( auto optString = std::dynamic_pointer_cast<option<std::string>>(opt) )
+                *optString->_ref = args.front();
+            
+            else if ( auto optInt = std::dynamic_pointer_cast<option<int>>(opt) )
+                *optInt->_ref = std::stoi(args.front());
+            
+            else if ( auto optFloat  = std::dynamic_pointer_cast<option<float>>(opt) )
+                *optFloat->_ref = std::stof(args.front());
+            
+            else if ( auto optChar = std::dynamic_pointer_cast<option<char>>(opt) )
+                *optChar->_ref = args.front().front();
+            
+            args.pop();
         }
 
 
 
-        void display_help() const noexcept {
+        inline void set_flag(std::queue<std::string>& args) {
+            *_flags[args.front()]->_ref = true;
+            args.pop();
+        }
+
+
+
+        // returns the index of last argument (value) that isn't a option or flag
+        // int parse_option_string_values(int argc, char** argv, int value_index, std::shared_ptr<option<std::string>> opt) {
+        //     if (value_index < argc && not ( _options.contains(argv[value_index]) || _flags.contains(argv[value_index]) )) {
+        //         *(opt->_ref) = argv[value_index];
+        //         value_index++;
+        //     }
+
+        //     while (value_index < argc && not ( _options.contains(argv[value_index]) || _flags.contains(argv[value_index]) )) {
+        //         opt->_ref->append(" ").append(argv[value_index]); // weird but it's c++ <3
+        //         value_index++;
+        //     }
+
+        //     return value_index - 1;
+        // }
+
+
+        
+        inline void display_help() const noexcept {
             if (not _app_description.empty())
                 std::cout << "DESCRIPTION\n\t" << _app_description << "\n\n";
 
