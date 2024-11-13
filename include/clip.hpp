@@ -22,17 +22,39 @@
 
 namespace CLI
 {
+    
+    template<typename T>
+    concept arg_types =
+        std::is_same_v<T, int>  ||
+        std::is_same_v<T, float>||
+        std::is_same_v<T, char> ||
+        std::is_same_v<T, bool> ||
+        std::is_same_v<T, std::string>;
 
-    using cstr = const char*;
-
-    class clip;
 
 
     template<typename T>
-    concept valid_option_type = std::is_same_v<T, int> ||
-                                std::is_same_v<T, float> ||
-                                std::is_same_v<T, char> ||
-                                std::is_same_v<T, std::string>;
+    concept option_types = 
+        std::is_same_v<T, int>  ||
+        std::is_same_v<T, float>||
+        std::is_same_v<T, char> ||
+        std::is_same_v<T, std::string>;
+
+
+    class clip;
+
+    class option_base;
+
+    template<arg_types Tp>
+    class option;
+
+
+    using cstr = const char*;
+    using flag = option<bool>;
+    using info_flag = std::pair<std::string, std::string>;
+    using arg_name_map = std::map<std::string, std::string>;
+    using option_map = std::unordered_map<std::string, std::shared_ptr<option_base>>;
+    using flag_map = std::unordered_map<std::string, std::shared_ptr<option<bool>>>;
 
 
 
@@ -51,7 +73,7 @@ namespace CLI
 
 
 
-    template<valid_option_type Tp>
+    template<arg_types Tp>
     class option : public option_base {
         friend class clip;
 
@@ -93,56 +115,6 @@ namespace CLI
             return *this;
         }
     };
-
-
-
-    class flag {
-        friend class clip;
-
-        bool* _ref = nullptr;
-        std::string _doc;
-        bool _req { false };
-        bool _is_set{ false };
-
-    public:
-        flag() = default;
-        ~flag() = default;
-
-
-
-        flag& set(bool& ref, bool def = false) {
-            _ref = &ref;
-            *_ref = def;
-            return *this;
-        }
-
-
-
-        flag& doc(cstr doc) {
-            _doc = doc;
-            return *this;
-        }
-
-
-
-        flag& req() {
-            _req = true;
-            return *this;
-        }
-
-        // flag& print() {
-        //     std::cout << _doc << _req << _is_set;
-        //     return *this;
-        // }
-    };
-
-
-
-    using arg_name_map = std::map<std::string, std::string>;
-    using option_map = std::unordered_map<std::string, std::shared_ptr<option_base>>;
-    using flag_map = std::unordered_map<std::string, std::shared_ptr<flag>>;
-    using info_flag = std::pair<std::string, std::string>;
-
 
 
 
@@ -252,7 +224,7 @@ namespace CLI
         * 
         */
 
-        template<valid_option_type Tp>
+        template<option_types Tp>
         option<Tp>& add_option(cstr name) {
             _options[name] = std::make_shared<option<Tp>>();
             _option_names[name];
@@ -261,7 +233,7 @@ namespace CLI
 
 
 
-        template<valid_option_type Tp>
+        template<option_types Tp>
         option<Tp>& add_option(cstr name, cstr alt_name) {
             _options[name] = std::make_shared<option<Tp>>();
             _options[alt_name] = _options[name];
@@ -408,8 +380,6 @@ namespace CLI
 
 
     private:
-
-
         std::string _app_name;
         std::string _app_description;
         // std::string _synopsis;
@@ -425,7 +395,5 @@ namespace CLI
         arg_name_map _option_names;
         arg_name_map _flag_names;
     };
-
-
 
 } // namespace CLI
