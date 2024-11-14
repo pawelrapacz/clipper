@@ -48,7 +48,6 @@ namespace CLI
     using info_flag = std::pair<std::string, std::string>;
     using arg_name_map = std::map<std::string, std::string>;
     using option_map = std::unordered_map<std::string, std::shared_ptr<option_base>>;
-    using flag_map = std::unordered_map<std::string, std::shared_ptr<flag>>;
 
 
 
@@ -185,6 +184,12 @@ namespace CLI
         bool* _ref = nullptr;
 
     protected:
+        inline void operator=(bool val) {
+            *_ref = val;
+        }
+
+
+
         std::string value_info() const noexcept override { return ""; } // delete - unused function
 
 
@@ -349,18 +354,18 @@ namespace CLI
 
 
         flag& add_flag(cstr name) {
-            _flags[name] = std::make_shared<flag>();
+            _options[name] = std::make_shared<flag>();
             _flag_names[name];
-            return *_flags[name];
+            return *std::static_pointer_cast<flag>(_options[name]);
         }
 
 
 
         flag& add_flag(cstr name, cstr alt_name) {
-            _flags[name] = std::make_shared<flag>();
-            _flags[alt_name] = _flags[name];
+            _options[name] = std::make_shared<flag>();
+            _options[alt_name] = _options[name];
             _flag_names[name] = alt_name;
-            return *_flags[name];
+            return *std::static_pointer_cast<flag>(_options[name]);
         }
 
 
@@ -404,13 +409,6 @@ namespace CLI
                     
                     set_option(args);
                 }
-                
-                else if (_flags.contains(args.front())) {
-                    if (_flags.at(args.front())->_req) req_count--;
-
-                    set_flag(args);
-                }
-                
                 else {
                     _wrong.emplace_back("Unkonown argument " + args.front());
                     return false;
@@ -432,8 +430,12 @@ namespace CLI
             std::shared_ptr<option_base>& opt = _options[args.front()];
             std::string temp_option_name = args.front();
             args.pop();
-            
-            if (args.empty()) {
+
+            if ( auto optFlag = std::dynamic_pointer_cast<flag>(opt) ) {
+                *optFlag = !(*optFlag->_ref);
+                return;
+            }
+            else if (args.empty()) {
                 _wrong.emplace_back("Missing option value " + temp_option_name);
                 return;
             }
@@ -459,13 +461,6 @@ namespace CLI
                 _wrong.emplace_back("Value " + args.front() + " is not allowed " + temp_option_name);
                 return;
             }
-        }
-
-
-
-        inline void set_flag(std::queue<std::string>& args) {
-            *_flags[args.front()]->_ref = true;
-            args.pop();
         }
 
 
@@ -552,7 +547,6 @@ namespace CLI
         info_flag _help_flag;
         info_flag _version_flag; 
         option_map _options;
-        flag_map _flags;
         arg_name_map _option_names;
         arg_name_map _flag_names;
         std::vector<std::string> _wrong;
