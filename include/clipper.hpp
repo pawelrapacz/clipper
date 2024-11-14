@@ -154,8 +154,18 @@ namespace CLI
             else {
                 std::string list;
 
-                for (Tp i : _match_list)
-                    list += i + " ";
+                if constexpr (std::is_same_v<Tp, std::string>) {
+                    for (Tp i : _match_list)
+                        list.append(i).push_back(' ');
+                }
+                else if constexpr (std::is_same_v<Tp, char>) {
+                    for (Tp i : _match_list)
+                        list.append(1, i).push_back(' ');
+                }
+                else {
+                    for (Tp i : _match_list)
+                        list.append(std::to_string(i)).push_back(' ');
+                }
 
                 list.pop_back();
                 return "(" + list + ")";
