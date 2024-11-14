@@ -210,14 +210,6 @@ namespace CLI
 
 
 
-        flag& set(bool& ref, bool def) {
-            _ref = &ref;
-            *_ref = def;
-            return *this;
-        }
-
-
-
         flag& doc(cstr doc) {
             _doc = doc;
             return *this;
@@ -527,7 +519,7 @@ namespace CLI
             args.pop();
 
             if ( auto optFlag = std::dynamic_pointer_cast<flag>(opt) ) {
-                *optFlag = !(*optFlag->_ref);
+                *optFlag = true;
                 return;
             }
             else if (args.empty()) {
