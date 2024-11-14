@@ -16,6 +16,7 @@
 #include <map>
 #include <unordered_map>
 #include <queue>
+#include <vector>
 #include <set>
 #include <memory>
 #include <type_traits>
@@ -226,6 +227,9 @@ namespace CLI
 
     class clip {
     public:
+        const std::vector<std::string>& wrong = _wrong;
+
+    public:
         clip() = default;
 
 
@@ -375,7 +379,6 @@ namespace CLI
 
         bool parse(int argc, char* argv[]) {
             uint32_t req_count = option_base::any_req;
-
             std::queue<std::string> args;
             for (int i = 1; i < argc; i++) // argv[0] is the command name, it is meant to be omitted
                 args.push(argv[i]);
@@ -383,7 +386,7 @@ namespace CLI
 
             if (args.size() == 1 && (args.front() == _help_flag.first || args.front() == _help_flag.second)) {
                 display_help();
-                return true;
+                return false;
             }
 
             if (args.size() == 1 && (args.front() == _version_flag.first || args.front() == _version_flag.second)) {
@@ -391,19 +394,15 @@ namespace CLI
                 _app_name << " " << 
                 _version << "\n" << 
                 _author << "\n";
-                return true;
-            }
-
-            if (args.size() < 2 && option_base::any_req)
                 return false;
+            }
 
 
             while (not args.empty()) {
                 if (_options.contains(args.front())) {
                     if (_options.at(args.front())->_req) req_count--;
                     
-                    try { set_option(args); }
-                    catch (std::exception e) { return false; }
+                    set_option(args);
                 }
                 
                 else if (_flags.contains(args.front())) {
@@ -412,12 +411,16 @@ namespace CLI
                     set_flag(args);
                 }
                 
-                else
+                else {
+                    _wrong.emplace_back("Unkonown argument " + args.front());
                     return false;
+                }
             }
 
-            if (req_count)
+            if (req_count) {
+                _wrong.emplace_back("Missing required argument");
                 return false;
+            }
 
             return true;
         }
@@ -427,11 +430,15 @@ namespace CLI
     private:
         inline void set_option(std::queue<std::string>& args) {
             std::shared_ptr<option_base>& opt = _options[args.front()];
+            std::string temp_option_name = args.front();
             args.pop();
             
-            if (args.empty())
-                throw std::logic_error("Not enough arguments");
+            if (args.empty()) {
+                _wrong.emplace_back("Missing option value " + temp_option_name);
+                return;
+            }
 
+            try {
 
             if ( auto optString = std::dynamic_pointer_cast<option<std::string>>(opt) )
                 *optString = args.front();
@@ -444,8 +451,14 @@ namespace CLI
             
             else if ( auto optChar = std::dynamic_pointer_cast<option<char>>(opt) )
                 *optChar = args.front().front();
-            
+                
             args.pop();
+
+            }
+            catch (...) {
+                _wrong.emplace_back("Value " + args.front() + " is not allowed " + temp_option_name);
+                return;
+            }
         }
 
 
@@ -542,6 +555,7 @@ namespace CLI
         flag_map _flags;
         arg_name_map _option_names;
         arg_name_map _flag_names;
+        std::vector<std::string> _wrong;
     };
 
 } // namespace CLI
