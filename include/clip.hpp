@@ -8,19 +8,19 @@
 
 #pragma once
 
-#include <iostream>
-#include <iomanip>
 #include <stdexcept>
-#include <string>
-#include <cstring>
+#include <type_traits>
+#include <memory>
 #include <map>
 #include <unordered_map>
 #include <queue>
 #include <vector>
 #include <set>
-#include <memory>
-#include <type_traits>
 #include <utility>
+#include <string>
+#include <cstring>
+#include <sstream>
+#include <iomanip>
 
 
 namespace CLI
@@ -45,7 +45,6 @@ namespace CLI
 
 
     using cstr = const char*;
-    using info_flag = std::pair<std::string, std::string>;
     using arg_name_map = std::map<std::string, std::string>;
     using option_map = std::unordered_map<std::string, std::shared_ptr<option_base>>;
 
@@ -54,19 +53,24 @@ namespace CLI
     // allows casting option pointers
     class option_base {
     protected:
-        friend class clip;
-
-        std::string _vname;
+        std::string _vname { "value" };
         std::string _doc;
         bool _req { false };
 
         inline static uint32_t any_req { };
 
-    protected:
-        virtual std::string value_info() const noexcept = 0;
-
     public:
         virtual ~option_base() = default;
+
+        virtual std::string value_info() const noexcept = 0;
+
+
+        const std::string& doc() const noexcept
+        { return _doc; }
+
+        
+        bool req() const noexcept
+        { return _req; }
     };
 
 
@@ -92,24 +96,8 @@ namespace CLI
 
 
 
-        std::string value_info() const noexcept override {
-            if (_match_list.empty()) {
-                return _vname;
-            }
-            else {
-                std::string list;
-
-                for (Tp i : _match_list)
-                    list += i + " ";
-
-                list.pop_back();
-                return "[" + list + "]";
-            }
-        }
-
-
-
     public:
+        using option_base::doc;
         option() = default;
         ~option() = default;
 
@@ -174,6 +162,23 @@ namespace CLI
             any_req++;
             return *this;
         }
+
+
+    
+        std::string value_info() const noexcept override {
+            if (_match_list.empty()) {
+                return "<" + _vname + ">";
+            }
+            else {
+                std::string list;
+
+                for (Tp i : _match_list)
+                    list += i + " ";
+
+                list.pop_back();
+                return "(" + list + ")";
+            }
+        }
     };
 
 
@@ -190,12 +195,11 @@ namespace CLI
 
 
 
-        std::string value_info() const noexcept override { return ""; } // delete - unused function
-
-
     public:
+        using option_base::doc;
         flag() = default;
         ~flag() = default;
+
 
 
         flag& set(bool& ref) {
@@ -226,6 +230,18 @@ namespace CLI
             any_req++;
             return *this;
         }
+
+
+
+        std::string value_info() const noexcept override { return ""; } // delete - unused function
+    };
+
+
+
+    struct info_flag {
+        std::string name;
+        std::string alt_name;
+        flag fhndl;
     };
 
 
@@ -370,14 +386,96 @@ namespace CLI
 
 
 
-        void help_flag(cstr name, cstr alt_name = "") {
-            _help_flag = std::make_pair<std::string, std::string>(name, alt_name);
+        flag& help_flag(cstr name, cstr alt_name = "") {
+            _help_flag = {name, alt_name};
+            _help_flag.fhndl.doc("displays help");
+            return _help_flag.fhndl;
         }
 
 
 
-        void version_flag(cstr name, cstr alt_name = "") {
-            _version_flag = std::make_pair<std::string, std::string>(name, alt_name);
+        flag& version_flag(cstr name, cstr alt_name = "") {
+            _version_flag = {name, alt_name};
+            _version_flag.fhndl.doc("displays version information");
+            return _version_flag.fhndl;
+        }
+
+
+
+        inline std::string make_help() const noexcept {
+            constexpr int space = 35;
+            std::ostringstream help;
+
+            if (not description().empty())
+                help << "DESCRIPTION\n\t" << description() << "\n\n";
+
+
+
+            help << "SYNOPSIS\n\t" << _app_name;
+
+            for (auto [name, alt_name] : _option_names)
+                if (_options.at(name)->req())
+                   help << " " << (alt_name.empty() ? name : alt_name) << " " << _options.at(name)->value_info();
+
+            for (auto [name, alt_name] : _flag_names)
+                if (_options.at(name)->req())
+                    help << " " << (alt_name.empty() ? name : alt_name);
+
+            help << " [...]\n";
+
+
+
+
+            
+
+            help << "\nFLAGS\n";
+            if (not _help_flag.name.empty()) {
+                help << "\t" << std::left << std::setw(space) << std::setfill(' ') <<
+                (_help_flag.alt_name.empty() ? "" : _help_flag.alt_name + ", ") + _help_flag.name <<
+                _help_flag.fhndl.doc() << "\n";
+            }
+
+            if (not _version_flag.name.empty()) {
+                help << "\t" << std::left << std::setw(space) << std::setfill(' ') <<
+                (_version_flag.alt_name.empty() ? "" : _version_flag.alt_name + ", ") + _version_flag.name <<
+                _version_flag.fhndl.doc() << "\n";
+            }
+
+            for (auto [name, alt_name] : _flag_names) {
+                help << "\t" << std::left << std::setw(space) << std::setfill(' ') <<
+                (alt_name.empty() ? "" : alt_name + ", ") + name <<
+                _options.at(name)->doc() << "\n";
+            }
+
+
+            help << "\nOPTIONS\n";
+            for (auto [name, alt_name] : _option_names) {
+                help << "\t" << std::left << std::setw(space) << std::setfill(' ') <<
+                (alt_name.empty() ? "" : alt_name + ", ") + name + " " +
+                _options.at(name)->value_info()<<
+                _options.at(name)->doc() << "\n";
+            }
+
+
+            if (not _license_notice.empty())
+                help << "\nLICENSE\n\t" << _license_notice << "\n";
+
+            if (not _author.empty())
+                help << "\nAUTHOR\n\t" << _author << "\n";
+
+            if (not _web_link.empty())
+                help << "\n" << _web_link << "\n";
+
+            return help.str();
+        }
+
+
+
+        inline std::string make_version_info() const noexcept {
+            return
+                _app_name + " " + 
+                _version + "\n" + 
+                _author + "\n";
         }
 
 
@@ -389,23 +487,20 @@ namespace CLI
                 args.push(argv[i]);
 
 
-            if (args.size() == 1 && (args.front() == _help_flag.first || args.front() == _help_flag.second)) {
-                display_help();
-                return false;
+            if (args.size() == 1 && (args.front() == _help_flag.name || args.front() == _help_flag.alt_name)) {
+                _help_flag.fhndl = true;
+                return true;
             }
 
-            if (args.size() == 1 && (args.front() == _version_flag.first || args.front() == _version_flag.second)) {
-                std::cout << 
-                _app_name << " " << 
-                _version << "\n" << 
-                _author << "\n";
-                return false;
+            if (args.size() == 1 && (args.front() == _version_flag.name || args.front() == _version_flag.alt_name)) {
+                _version_flag.fhndl = true;
+                return true;
             }
 
 
             while (not args.empty()) {
                 if (_options.contains(args.front())) {
-                    if (_options.at(args.front())->_req) req_count--;
+                    if (_options.at(args.front())->req()) req_count--;
                     
                     set_option(args);
                 }
@@ -461,77 +556,6 @@ namespace CLI
                 _wrong.emplace_back("Value " + args.front() + " is not allowed " + temp_option_name);
                 return;
             }
-        }
-
-
-        
-        inline void display_help() const noexcept {
-            constexpr int space = 35;
-
-            auto synopsis = [&]()->std::string {
-                std::string snp = _app_name + " ";
-
-                if (not option_base::any_req)
-                    return snp + "[...]";
-
-
-                for (auto [name, alt_name] : _option_names)
-                    if (_options.at(name)->_req)
-                        snp += alt_name + " <" + _options.at(name)->value_info() + "> ";
-
-                for (auto [name, alt_name] : _flag_names)
-                    if (_flags.at(name)->_req)
-                        snp += alt_name + " ";
-
-                return snp + "[...]";
-            };
-
-
-
-            if (not _app_description.empty())
-                std::cout << "DESCRIPTION\n\t" << _app_description << "\n\n";
-
-
-            std::cout << "SYNOPSIS\n\t" << synopsis() << "\n";
-            
-
-            std::cout << "\nFLAGS\n";
-            if (not _help_flag.first.empty()) {
-                std::cout << "\t" << std::left << std::setw(space) << std::setfill(' ') <<
-                (_help_flag.second.empty() ? "" : _help_flag.second + ", ") + _help_flag.first <<
-                "displays help\n";
-            }
-
-            if (not _version_flag.first.empty()) {
-                std::cout << "\t" << std::left << std::setw(space) << std::setfill(' ') <<
-                (_version_flag.second.empty() ? "" : _version_flag.second + ", ") + _version_flag.first <<
-                "displays version information\n";
-            }
-
-            for (auto [name, alt_name] : _flag_names) {
-                std::cout << "\t" << std::left << std::setw(space) << std::setfill(' ') <<
-                (alt_name.empty() ? "" : alt_name + ", ") + name <<
-                _flags.at(name)->_doc << "\n";
-            }
-
-
-            std::cout << "\nOPTIONS\n";
-            for (auto [name, alt_name] : _option_names) {
-                std::cout << "\t" << std::left << std::setw(space) << std::setfill(' ') <<
-                (alt_name.empty() ? "" : alt_name + ", ") + name + " " +
-                _options.at(name)->value_info()<<
-                _options.at(name)->_doc << "\n";
-            }
-
-
-            if (not _license_notice.empty())
-                std::cout << "\nLICENSE\n\t" << _license_notice << "\n";
-
-            if (not _author.empty())
-                std::cout << "\nAUTHOR\n\t" << _author << "\n";
-
-            if (not _web_link.empty())
-                std::cout << "\n" << _web_link << "\n";
         }
 
 
