@@ -34,7 +34,7 @@ namespace CLI
 
 
 
-    class clip;
+    class clipper;
 
     class option_base;
 
@@ -77,7 +77,7 @@ namespace CLI
 
     template<option_types Tp>
     class option : public option_base {
-        friend class clip;
+        friend class clipper;
 
         Tp* _ref = nullptr;
         std::set<Tp> _match_list;
@@ -184,7 +184,7 @@ namespace CLI
 
 
     class flag : public option_base {
-        friend class clip;
+        friend class clipper;
 
         bool* _ref = nullptr;
 
@@ -238,23 +238,23 @@ namespace CLI
 
 
 
-    class clip {
+    class clipper {
     public:
         const std::vector<std::string>& wrong = _wrong;
 
     public:
-        clip() = default;
+        clipper() = default;
 
 
-        clip(cstr app_name)
+        clipper(cstr app_name)
             : _app_name(app_name) {}
 
 
-        clip(cstr app_name, cstr version, cstr author, cstr license_notice)
+        clipper(cstr app_name, cstr version, cstr author, cstr license_notice)
             : _app_name(app_name), _version(version), _author(author), _license_notice(license_notice) {}
 
 
-        ~clip() = default;
+        ~clipper() = default;
 
 
 
@@ -264,7 +264,7 @@ namespace CLI
         * 
         */
 
-        clip& name(cstr name) noexcept {
+        clipper& name(cstr name) noexcept {
             _app_name = name;
             return *this;
         }
@@ -276,7 +276,7 @@ namespace CLI
 
 
 
-        clip& description(cstr description) noexcept {
+        clipper& description(cstr description) noexcept {
             _app_description = description;
             return *this;
         }
@@ -288,7 +288,7 @@ namespace CLI
 
 
 
-        clip& version(cstr version) noexcept {
+        clipper& version(cstr version) noexcept {
             _version = version;
             return *this;
         }
@@ -300,7 +300,7 @@ namespace CLI
 
 
 
-        clip& author(cstr name) noexcept {
+        clipper& author(cstr name) noexcept {
             _author = name;
             return *this;
         }
@@ -312,7 +312,7 @@ namespace CLI
 
 
 
-        clip& license(cstr license_notice) noexcept {
+        clipper& license(cstr license_notice) noexcept {
             _license_notice = license_notice;
             return *this;
         }
@@ -324,7 +324,7 @@ namespace CLI
 
 
 
-        clip& web_link(cstr link) noexcept {
+        clipper& web_link(cstr link) noexcept {
             _web_link = link;
             return *this;
         }
