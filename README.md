@@ -192,7 +192,7 @@ int main(int argc, char** argv) {
 | `make_help()`                                        | returns help page                                      | `std::string`                                    |
 | `make_version_info()`                                | returns version information                            | `std::string`                                    |
 | `parse(argc, argv)`                                  | parses command line arguments                          | `bool` (`true` if successful, `false` otherwise) |
-| `wrong`                                              | `const std::vector` that contains parsing errors       |                                                  |
+| `wrong`                                              | `const std::vector&` that contains parsing errors       |                                                  |
 
 <br>
 
