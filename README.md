@@ -96,7 +96,7 @@ std::cout << cli.make_help();
 std::cout << cli.make_version_info();
 ```
 
-`clipper` class gives access to the `wrong` member which is a `const std::vector&` and contains any parsing errors like:
+`clipper` class gives access to the `wrong` member which is a `const std::vector<std::string>&` and contains any parsing errors like:
 - Unkonown argument
 - Missing required argument
 - Missing option value
@@ -164,35 +164,39 @@ int main(int argc, char** argv) {
 
 
 ### clipper class
+This class is practically the only interface of the clipper library,
+that is meant to be directly used.
+It holds the neccessary and optional information about
+the application, options and flags.
 
-| Member                                               | Description                                            | Return value                                     |
-| ---------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------ |
-| `clipper()`                                          | constructor                                            |                                                  |
-| `clipper(app_name)`                                  | constructor                                            |                                                  |
-| `clipper(app_name, version, author, license_notice)` | constructor                                            |                                                  |
-| `~clipper()`                                         | destructor                                             |                                                  |
-| `name(name)`                                         | sets the name                                          |                                                  |
-| `name()`                                             | gets the name                                          | `const std::string&`                             |
-| `description(description)`                           | sets the description                                   |                                                  |
-| `description()`                                      | gets the description                                   | `const std::string&`                             |
-| `version(version)`                                   | sets the version                                       |                                                  |
-| `version()`                                          | gets the version                                       | `const std::string&`                             |
-| `author(author)`                                     | sets the author                                        |                                                  |
-| `author()`                                           | gets the author                                        | `const std::string&`                             |
-| `license(license_notice)`                            | sets the license notice                                |                                                  |
-| `license()`                                          | gets the license notice                                | `const std::string&`                             |
-| `web_link(web_link)`                                 | sets the web link                                      |                                                  |
-| `web_link()`                                         | gets the web link                                      | `const std::string&`                             |
-| `add_option<type>(name)`                             | adds a option of a given type                          | `option&`                                        |
-| `add_option<type>(name, alt_name)`                   | adds a option of a given type with an alternative name | `option&`                                        |
-| `add_flag(name)`                                     | adds a flag                                            | `flag&`                                          |
-| `add_flag(name, alt_name)`                           | adds a flag with an alternative name                   | `flag&`                                          |
-| `help_flag(name, alt_name = "")`                     | sets the help flag name/names                          | `flag&`                                          |
-| `version_flag(name, alt_name = "")`                  | sets the help flag name/name                           | `flag&`                                          |
-| `make_help()`                                        | returns help page                                      | `std::string`                                    |
-| `make_version_info()`                                | returns version information                            | `std::string`                                    |
-| `parse(argc, argv)`                                  | parses command line arguments                          | `bool` (`true` if successful, `false` otherwise) |
-| `wrong`                                              | `const std::vector&` that contains parsing errors       |                                                  |
+| Member                                               | Description                                                    | Return value                                     |
+| ---------------------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------ |
+| `clipper()`                                          | constructor                                                    |                                                  |
+| `clipper(app_name)`                                  | constructor                                                    |                                                  |
+| `clipper(app_name, version, author, license_notice)` | constructor                                                    |                                                  |
+| `~clipper()`                                         | destructor                                                     |                                                  |
+| `name(name)`                                         | sets the name                                                  | `clipper&`                                       |
+| `name()`                                             | gets the name                                                  | `const std::string&`                             |
+| `description(description)`                           | sets the description                                           | `clipper&`                                       |
+| `description()`                                      | gets the description                                           | `const std::string&`                             |
+| `version(version)`                                   | sets the version                                               | `clipper&`                                       |
+| `version()`                                          | gets the version                                               | `const std::string&`                             |
+| `author(author)`                                     | sets the author                                                | `clipper&`                                       |
+| `author()`                                           | gets the author                                                | `const std::string&`                             |
+| `license(license_notice)`                            | sets the license notice                                        | `clipper&`                                       |
+| `license()`                                          | gets the license notice                                        | `const std::string&`                             |
+| `web_link(web_link)`                                 | sets the web link                                              | `clipper&`                                       |
+| `web_link()`                                         | gets the web link                                              | `const std::string&`                             |
+| `add_option<type>(name)`                             | adds a option of a given type                                  | `option&`                                        |
+| `add_option<type>(name, alt_name)`                   | adds a option of a given type with an alternative name         | `option&`                                        |
+| `add_flag(name)`                                     | adds a flag                                                    | `flag&`                                          |
+| `add_flag(name, alt_name)`                           | adds a flag with an alternative name                           | `flag&`                                          |
+| `help_flag(name, alt_name = "")`                     | sets the help flag name/names                                  | `flag&`                                          |
+| `version_flag(name, alt_name = "")`                  | sets the help flag name/name                                   | `flag&`                                          |
+| `make_help()`                                        | returns help page                                              | `std::string`                                    |
+| `make_version_info()`                                | returns version information                                    | `std::string`                                    |
+| `parse(argc, argv)`                                  | parses command line arguments                                  | `bool` (`true` if successful, `false` otherwise) |
+| `wrong`                                              | `const std::vector<std::string>&` that contains parsing errors |                                                  |
 
 <br>
 
