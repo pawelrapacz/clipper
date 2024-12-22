@@ -13,7 +13,7 @@
  *  \file       clipper.hpp
  *  \brief      Clipper is a simple, header-only library that handles commad line arguments and parsing.
  *  \author     Paweł Rapacz
- *  \version    1.0.0
+ *  \version    1.1.0
  *  \date       2024
  *  \copyright  MIT License
  */
@@ -44,10 +44,12 @@ namespace CLI
      */
     template<typename T>
     concept option_types = 
-        std::is_same_v<T, int>  ||
-        std::is_same_v<T, float>||
-        std::is_same_v<T, char> ||
-        std::is_same_v<T, std::string>;
+        std::negation_v<std::is_const<T>> &&
+        std::negation_v<std::is_same<T, bool>> && (
+            std::is_integral_v<T>       ||
+            std::is_floating_point_v<T> ||
+            std::is_same_v<T, std::string>
+        );
 
 
 
@@ -691,17 +693,18 @@ namespace CLI
 
             try {
 
-            if ( auto optString = std::dynamic_pointer_cast<option<std::string>>(opt) )
-                *optString = args.front();
+            // TODO: implement the convertion properly 
+            // if ( auto optString = std::dynamic_pointer_cast<option<std::string>>(opt) )
+            //     *optString = args.front();
             
-            else if ( auto optInt = std::dynamic_pointer_cast<option<int>>(opt) )
-                *optInt = std::stoi(args.front());
+            // else if ( auto optInt = std::dynamic_pointer_cast<option<int>>(opt) )
+            //     *optInt = std::stoi(args.front());
             
-            else if ( auto optFloat  = std::dynamic_pointer_cast<option<float>>(opt) )
-                *optFloat = std::stof(args.front());
+            // else if ( auto optFloat  = std::dynamic_pointer_cast<option<float>>(opt) )
+            //     *optFloat = std::stof(args.front());
             
-            else if ( auto optChar = std::dynamic_pointer_cast<option<char>>(opt) )
-                *optChar = args.front().front();
+            // else if ( auto optChar = std::dynamic_pointer_cast<option<char>>(opt) )
+            //     *optChar = args.front().front();
                 
             args.pop();
 
