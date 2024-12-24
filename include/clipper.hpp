@@ -74,13 +74,10 @@ namespace CLI
 
     class option_base;
 
-    template<option_types Tp>
+    template<typename Tp>
     class option;
 
-    class flag;
 
-
-    using cstr = const char*;
     using arg_name_map = std::map<std::string, std::string>;
     using option_map = std::unordered_map<std::string, std::shared_ptr<option_base>>;
 
@@ -128,17 +125,148 @@ namespace CLI
      *  \tparam Tp Option (option value) type.
      */
     template<option_types Tp>
-    class option : public option_base {
+    class option<Tp> : public option_base {
+        friend class clipper;
+
     public:
         using predicate = bool (*)(const Tp&); ///< Type of function that checks weather the given value meets some requirements
-        friend class clipper;
+
+        using option_base::doc;
+        option() = default;     ///< Default constructor.
+        ~option() = default;    ///< Default destructor.
+
+
+        /**
+         *  \brief  Sets the variable to write to and the value name.
+         *  \param  value_name Name of the value type e.g. file, charset.
+         *  \param[out] ref Variable to write the option value to.
+         *  \return Reference to itself.
+         */
+        option& set(std::string_view value_name, Tp& ref) {
+            _vname = value_name;
+            _ptr = &ref;
+            *_ptr = { };
+            return *this;
+        }
+
+
+        /**
+         *  \brief  Sets the variable to write to and the value name.
+         *  \param  value_name Name of the value type e.g. file, charset.
+         *  \param[out] ref Variable to write the option value to.
+         *  \tparam V Type of def. It must be convertible to the option type.
+         *  \param  def Default value of the option.
+         *  \return Reference to itself.
+         */
+        template<typename V>
+        option& set(std::string_view value_name, Tp& ref, V def) {
+            static_assert(std::is_convertible<V, Tp>::value, "Type V must be convertible to type Tp");
+
+            _vname = value_name;
+            _ptr = &ref;
+            *_ptr = static_cast<Tp>(def);
+            return *this;
+        }
+
+
+        /**
+         *  \brief  Sets allowed values \ref allows().
+         *  \param  val Values of the types convertible to the option types.
+         *  \return Reference to itself.
+         *  \see match()
+         */
+        template<typename... Args>
+        option& match(Args&&... val) {
+            static_assert((std::is_convertible_v<std::decay_t<Args>, Tp> && ...), "All arguments must be of type Tp or convertible to type Tp");
+            (_match_list.insert(std::forward<Args>(val)), ... );
+            return *this;
+        }
+
+
+        /**
+         *  \brief  Sets allowed values (same as \ref match()).
+         *  \param  val Values of the types convertible to the option types.
+         *  \return Reference to itself.
+         *  \see match()
+         */
+        template<typename... Args>
+        option& allows(Args&&... val) {
+            return match(std::forward<Args>(val)...);
+        }
+
+
+        /**
+         *  \brief  Sets a function that validates the option value.
+         *  \param  doc Description of the requirements of the given function, i.e. [0; 1], length < 10, lower case.
+         *  \param  pred Function of type \ref predicate that checks whether the given value is valid (meets some requrements).
+         *  \return Reference to itself.
+         *  \see predicate allows()
+         */
+        option& match(std::string_view doc, predicate pred) {
+            _match_func_doc = doc;
+            _match_func = pred;
+            return *this;
+        }
+
+
+        /**
+         *  \brief  Sets the option description.
+         *  \param  doc Option information (documentation).
+         *  \return Reference to itself.
+         */
+        option& doc(std::string_view doc) {
+            _doc = doc;
+            return *this;
+        }
+
+
+        /**
+         *  \brief  Sets the option to be required.
+         *  \return Reference to itself.
+         */
+        option& req() {
+            _req = true;
+            any_req++;
+            return *this;
+        }
+
+
+        /**
+         *  \brief  Creates information about the allowed values of an option.
+         *  \return Information in format <type> or (val1 val2 ...) if the value has to match values set with match().
+         */
+        std::string value_info() const noexcept override {
+            if (_match_list.empty()) {
+                return "<" + _vname + ">";
+            }
+            else {
+                std::string list;
+
+                if constexpr (std::is_same_v<Tp, std::string>) {
+                    for (Tp i : _match_list)
+                        list.append(i).push_back(' ');
+                }
+                else if constexpr (std::is_same_v<Tp, char>) {
+                    for (Tp i : _match_list)
+                        list.append(1, i).push_back(' ');
+                }
+                else {
+                    for (Tp i : _match_list)
+                        list.append(std::to_string(i)).push_back(' ');
+                }
+
+                list.pop_back();
+                return "(" + list + ")";
+            }
+        }
+
     
     private:
-
         Tp* _ptr = nullptr;         ///< Pointer where to write parsed value to.
         std::string _match_func_doc; ///< Documentation of the requirements of a \ref predicate function i.e. [0; 1], length < 10, lower case
         predicate _match_func = nullptr; ///< Function that checks wheather the value is allowed.
         std::set<Tp> _match_list;   ///< Contains allowed values (if empty all viable values are allowed).
+
 
         bool validate(const Tp& __val) const {
             if (nullptr == _match_func)
@@ -146,6 +274,7 @@ namespace CLI
             else
                 return _match_func(__val) && (_match_list.empty() || _match_list.contains(__val));
         }
+
 
     protected:
         /**
@@ -201,23 +330,29 @@ namespace CLI
                 throw std::logic_error("Value is not allowed");
             }
         }
+    };
 
 
+    /**
+     *  \brief  Contains flag properties.
+     *  \see    clipper
+     */
+    template<>
+    class option<bool> : public option_base {
+        friend class clipper;
 
     public:
         using option_base::doc;
-        option() = default;     ///< Default constructor.
-        ~option() = default;    ///< Default destructor.
+        option() = default;   ///< Default constructor.
+        ~option() = default;  ///< Default destructor.
 
 
         /**
-         *  \brief  Sets the variable to write to and the value name.
-         *  \param  value_name Name of the value type e.g. file, charset.
-         *  \param[out] ref Variable to write the option value to.
+         *  \brief  Sets the variable to write to.
+         *  \param[out] ref Variable to write the flag value (state) to.
          *  \return Reference to itself.
          */
-        option& set(cstr value_name, Tp& ref) {
-            _vname = value_name;
+        option& set(bool& ref) {
             _ptr = &ref;
             *_ptr = { };
             return *this;
@@ -225,77 +360,18 @@ namespace CLI
 
 
         /**
-         *  \brief  Sets the variable to write to and the value name.
-         *  \param  value_name Name of the value type e.g. file, charset.
-         *  \param[out] ref Variable to write the option value to.
-         *  \tparam V Type of def. It must be convertible to the option type.
-         *  \param  def Default value of the option.
+         *  \brief  Sets the flag description.
+         *  \param  doc Flag information (documentation).
          *  \return Reference to itself.
          */
-        template<typename V>
-        option& set(cstr value_name, Tp& ref, V def) {
-            static_assert(std::is_convertible<V, Tp>::value, "Type V must be convertible to type Tp");
-
-            _vname = value_name;
-            _ptr = &ref;
-            *_ptr = static_cast<Tp>(def);
-            return *this;
-        }
-
-
-        /**
-         *  \brief  Sets allowed values \ref allows().
-         *  \param  val Values of the types convertible to the option types.
-         *  \return Reference to itself.
-         *  \see match()
-         */
-        template<typename... Args>
-        option& match(Args&&... val) {
-            static_assert((std::is_convertible_v<std::decay_t<Args>, Tp> && ...), "All arguments must be of type Tp or convertible to type Tp");
-            (_match_list.insert(std::forward<Args>(val)), ... );
-            return *this;
-        }
-
-
-        /**
-         *  \brief  Sets allowed values (same as \ref match()).
-         *  \param  val Values of the types convertible to the option types.
-         *  \return Reference to itself.
-         *  \see match()
-         */
-        template<typename... Args>
-        option& allows(Args&&... val) {
-            return match(std::forward<Args>(val)...);
-        }
-
-
-        /**
-         *  \brief  Sets a function that validates the option value.
-         *  \param  doc Description of the requirements of the given function, i.e. [0; 1], length < 10, lower case.
-         *  \param  pred Function of type \ref predicate that checks whether the given value is valid (meets some requrements).
-         *  \return Reference to itself.
-         *  \see predicate allows()
-         */
-        option& match(std::string_view doc, predicate pred) {
-            _match_func_doc = doc;
-            _match_func = pred;
-            return *this;
-        }
-
-
-        /**
-         *  \brief  Sets the option description.
-         *  \param  doc Option information (documentation).
-         *  \return Reference to itself.
-         */
-        option& doc(cstr doc) {
+        option& doc(std::string_view doc) {
             _doc = doc;
             return *this;
         }
 
 
         /**
-         *  \brief  Sets the option to be required.
+         *  \brief  Sets the flag to be required.
          *  \return Reference to itself.
          */
         option& req() {
@@ -305,45 +381,9 @@ namespace CLI
         }
 
 
-        /**
-         *  \brief  Creates information about the allowed values of an option.
-         *  \return Information in format <type> or (val1 val2 ...) if the value has to match values set with match().
-         */
-        std::string value_info() const noexcept override {
-            if (_match_list.empty()) {
-                return "<" + _vname + ">";
-            }
-            else {
-                std::string list;
-
-                if constexpr (std::is_same_v<Tp, std::string>) {
-                    for (Tp i : _match_list)
-                        list.append(i).push_back(' ');
-                }
-                else if constexpr (std::is_same_v<Tp, char>) {
-                    for (Tp i : _match_list)
-                        list.append(1, i).push_back(' ');
-                }
-                else {
-                    for (Tp i : _match_list)
-                        list.append(std::to_string(i)).push_back(' ');
-                }
-
-                list.pop_back();
-                return "(" + list + ")";
-            }
-        }
-    };
-
-
-    /**
-     *  \brief  Contains flag properties.
-     *  \see    clipper
-     */
-    class flag : public option_base {
-        friend class clipper;
-
+    private:
         bool* _ptr = nullptr; ///< Pointer where to write parsed value (state) to.
+
 
     protected:
         /**
@@ -370,47 +410,6 @@ namespace CLI
         inline void operator=(bool val) {
             *_ptr = val;
         }
-
-
-
-    public:
-        using option_base::doc;
-        flag() = default;   ///< Default constructor.
-        ~flag() = default;  ///< Default destructor.
-
-
-        /**
-         *  \brief  Sets the variable to write to.
-         *  \param[out] ref Variable to write the flag value (state) to.
-         *  \return Reference to itself.
-         */
-        flag& set(bool& ref) {
-            _ptr = &ref;
-            *_ptr = { };
-            return *this;
-        }
-
-
-        /**
-         *  \brief  Sets the flag description.
-         *  \param  doc Flag information (documentation).
-         *  \return Reference to itself.
-         */
-        flag& doc(cstr doc) {
-            _doc = doc;
-            return *this;
-        }
-
-
-        /**
-         *  \brief  Sets the flag to be required.
-         *  \return Reference to itself.
-         */
-        flag& req() {
-            _req = true;
-            any_req++;
-            return *this;
-        }
     };
 
 
@@ -421,7 +420,7 @@ namespace CLI
     struct info_flag {
         std::string name;
         std::string alt_name;
-        flag fhndl;
+        option<bool> fhndl;
     };
 
 
@@ -448,13 +447,13 @@ namespace CLI
         /**
          *  \brief Constructs a clipper instance and sets the app name.
          */
-        clipper(cstr app_name)
+        clipper(std::string_view app_name)
             : _app_name(app_name) {}
 
         /**
          *  \brief Constructs a clipper instance and sets the app name and other information.
          */
-        clipper(cstr app_name, cstr version, cstr author, cstr license_notice)
+        clipper(std::string_view app_name, std::string_view version, std::string_view author, std::string_view license_notice)
             : _app_name(app_name), _version(version), _author(author), _license_notice(license_notice) {}
 
 
@@ -465,7 +464,7 @@ namespace CLI
          *  \brief  Sets the (application) name.
          *  \return Reference to itself.
          */
-        clipper& name(cstr name) noexcept {
+        clipper& name(std::string_view name) noexcept {
             _app_name = name;
             return *this;
         }
@@ -483,7 +482,7 @@ namespace CLI
          *  \brief  Sets the description.
          *  \return Reference to itself.
          */
-        clipper& description(cstr description) noexcept {
+        clipper& description(std::string_view description) noexcept {
             _app_description = description;
             return *this;
         }
@@ -501,7 +500,7 @@ namespace CLI
          *  \brief  Sets the version.
          *  \return Reference to itself.
          */
-        clipper& version(cstr version) noexcept {
+        clipper& version(std::string_view version) noexcept {
             _version = version;
             return *this;
         }
@@ -519,7 +518,7 @@ namespace CLI
          *  \brief  Sets the author.
          *  \return Reference to itself.
          */
-        clipper& author(cstr name) noexcept {
+        clipper& author(std::string_view name) noexcept {
             _author = name;
             return *this;
         }
@@ -537,7 +536,7 @@ namespace CLI
          *  \brief  Sets the license notice.
          *  \return Reference to itself.
          */
-        clipper& license(cstr license_notice) noexcept {
+        clipper& license(std::string_view license_notice) noexcept {
             _license_notice = license_notice;
             return *this;
         }
@@ -555,7 +554,7 @@ namespace CLI
          *  \brief  Sets the web link.
          *  \return Reference to itself.
          */
-        clipper& web_link(cstr link) noexcept {
+        clipper& web_link(std::string_view link) noexcept {
             _web_link = link;
             return *this;
         }
@@ -578,7 +577,7 @@ namespace CLI
          *  \return Reference to the created option.
          */
         template<option_types Tp>
-        option<Tp>& add_option(cstr name) {
+        option<Tp>& add_option(std::string_view name) {
             _options[name] = std::make_shared<option<Tp>>();
             _option_names[name];
             return *std::static_pointer_cast<option<Tp>>(_options[name]);
@@ -593,7 +592,7 @@ namespace CLI
          *  \return Reference to the created option.
          */
         template<option_types Tp>
-        option<Tp>& add_option(cstr name, cstr alt_name) {
+        option<Tp>& add_option(std::string_view name, std::string_view alt_name) {
             _options[name] = std::make_shared<option<Tp>>();
             _options[alt_name] = _options[name];
             _option_names[name] = alt_name;
@@ -606,10 +605,10 @@ namespace CLI
          *  \param  name Flag name.
          *  \return Reference to the created flag.
          */
-        flag& add_flag(cstr name) {
-            _options[name] = std::make_shared<flag>();
+        option<bool>& add_flag(std::string_view name) {
+            _options[name] = std::make_shared<option<bool>>();
             _flag_names[name];
-            return *std::static_pointer_cast<flag>(_options[name]);
+            return *std::static_pointer_cast<option<bool>>(_options[name]);
         }
 
         /**
@@ -619,11 +618,11 @@ namespace CLI
          *  \param  alt_name Secondary flag name.
          *  \return Reference to the created flag.
          */
-        flag& add_flag(cstr name, cstr alt_name) {
-            _options[name] = std::make_shared<flag>();
+        option<bool>& add_flag(std::string_view name, std::string_view alt_name) {
+            _options[name] = std::make_shared<option<bool>>();
             _options[alt_name] = _options[name];
             _flag_names[name] = alt_name;
-            return *std::static_pointer_cast<flag>(_options[name]);
+            return *std::static_pointer_cast<option<bool>>(_options[name]);
         }
 
 
@@ -634,7 +633,7 @@ namespace CLI
          *  \param  alt_name Secondary flag name. (optional)
          *  \return Help flag reference.
          */
-        flag& help_flag(cstr name, cstr alt_name = "") {
+        option<bool>& help_flag(std::string_view name, std::string_view alt_name = "") {
             _help_flag = {name, alt_name};
             _help_flag.fhndl.doc("displays help");
             return _help_flag.fhndl;
@@ -648,7 +647,7 @@ namespace CLI
          *  \param  alt_name Secondary flag name. (optional)
          *  \return Help flag reference.
          */
-        flag& version_flag(cstr name, cstr alt_name = "") {
+        option<bool>& version_flag(std::string_view name, std::string_view alt_name = "") {
             _version_flag = {name, alt_name};
             _version_flag.fhndl.doc("displays version information");
             return _version_flag.fhndl;
