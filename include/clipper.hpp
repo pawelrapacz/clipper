@@ -22,14 +22,16 @@
 #include <stdexcept>
 #include <type_traits>
 #include <memory>
+#include <utility>
 #include <map>
 #include <unordered_map>
 #include <queue>
 #include <vector>
 #include <set>
-#include <utility>
 #include <string>
+#include <string_view>
 #include <cstring>
+#include <charconv>
 #include <sstream>
 #include <iomanip>
 
@@ -50,6 +52,21 @@ namespace CLI
             std::is_floating_point_v<T> ||
             std::is_same_v<T, std::string>
         );
+
+
+    /**
+     *  \brief Character types
+     */
+    template<typename T>
+    concept is_character = 
+        std::is_same_v<T, char> ||
+        std::is_same_v<T, wchar_t> ||
+        std::is_same_v<T, char8_t> ||
+        std::is_same_v<T, char16_t> ||
+        std::is_same_v<T, char32_t> ||
+        std::is_same_v<T, signed char> ||
+        std::is_same_v<T, unsigned char>;
+
 
 
 
@@ -82,8 +99,9 @@ namespace CLI
 
     public:
         virtual ~option_base() = default;
-
-        virtual std::string value_info() const noexcept = 0;
+        virtual assign(std::string_view) = 0;
+        virtual operator=(std::string_view) = 0;
+        virtual std::string value_info() const noexcept {};
 
         /**
          *  \brief  Accesses option documentation.
@@ -110,19 +128,62 @@ namespace CLI
     class option : public option_base {
         friend class clipper;
 
-        Tp* _ref = nullptr;         ///< Pointer where to write parsed value to.
+        Tp* _ptr = nullptr;         ///< Pointer where to write parsed value to.
         std::set<Tp> _match_list;   ///< Allowed values (if empty all viable values are allowed).
 
 
 
     protected:
         /**
+         *  \brief Converts and assigns a value to an option.
+         *  \param val Value to assign.
+         */
+        inline void assign(std::string_view val) override {
+            if constexpr (std::is_same_v<Tp, std::string>) {
+
+                if (_match_list.empty() || _match_list.contains(val))
+                    *_ptr = val;
+                else
+                    throw std::logic_error("Value is not allowed");
+
+
+            } else if constexpr (is_character<Tp>) {
+
+                if (_match_list.empty() || _match_list.contains(val.front()))
+                    *_ptr = val.front();
+                else
+                    throw std::logic_error("Value is not allowed");
+
+            } else {
+
+                Tp temp_v;
+
+                if (std::from_chars(val.begin(), val.end(), temp_v) &&
+                    (_match_list.empty() || _match_list.contains(temp_v)))
+                    *_ptr = temp_v;
+                else
+                    throw std::logic_error("Value is not allowed");
+                
+            }
+        }
+
+
+        /**
+         *  \brief Converts and assigns a value to an option.
+         *  \param val Value to assign.
+         */
+        inline void operator=(std::string_view val) override {
+            assign(val);
+        }
+
+
+        /**
          *  \brief Assigns a value to an option.
          *  \param val Assigned value.
          */
         inline void operator=(Tp val) {
             if (_match_list.empty() || _match_list.contains(val)) {
-                *_ref = val;
+                *_ptr = val;
             }
             else {
                 throw std::logic_error("Value is not allowed");
@@ -145,8 +206,8 @@ namespace CLI
          */
         option& set(cstr value_name, Tp& ref) {
             _vname = value_name;
-            _ref = &ref;
-            *_ref = { };
+            _ptr = &ref;
+            *_ptr = { };
             return *this;
         }
 
@@ -164,8 +225,8 @@ namespace CLI
             static_assert(std::is_convertible<V, Tp>::value, "Type V must be convertible to type Tp");
 
             _vname = value_name;
-            _ref = &ref;
-            *_ref = static_cast<Tp>(def);
+            _ptr = &ref;
+            *_ptr = static_cast<Tp>(def);
             return *this;
         }
 
@@ -243,14 +304,32 @@ namespace CLI
     class flag : public option_base {
         friend class clipper;
 
-        bool* _ref = nullptr; ///< Pointer where to write parsed value (state) to.
+        bool* _ptr = nullptr; ///< Pointer where to write parsed value (state) to.
 
     protected:
+        /**
+         *  \brief Converts and assigns a value to an option.
+         *  \param val Value to assign.
+         */
+        inline void assign(std::string_view val = "") override {
+            *_ptr = true;
+        }
+
+
+        /**
+         *  \brief Converts and assigns a value to an option.
+         *  \param val Value to assign.
+         */
+        inline void operator=(std::string_view val = "") override {
+            *_ptr = true;
+        }
+
+
         /**
          *  \brief Assigns a value to an flag.
          */
         inline void operator=(bool val) {
-            *_ref = val;
+            *_ptr = val;
         }
 
 
@@ -267,8 +346,8 @@ namespace CLI
          *  \return Reference to itself.
          */
         flag& set(bool& ref) {
-            _ref = &ref;
-            *_ref = { };
+            _ptr = &ref;
+            *_ptr = { };
             return *this;
         }
 
@@ -293,13 +372,6 @@ namespace CLI
             any_req++;
             return *this;
         }
-
-
-        /**
-         *  \brief  Unused.
-         *  \return Empty string.
-         */
-        std::string value_info() const noexcept override { return ""; } // delete - unused function
     };
 
 
@@ -679,7 +751,7 @@ namespace CLI
          */
         inline void set_option(std::queue<std::string>& args) {
             std::shared_ptr<option_base>& opt = _options[args.front()];
-            std::string temp_option_name = args.front();
+            std::string temp_option_name = std::move(args.front());
             args.pop();
 
             if ( auto optFlag = std::dynamic_pointer_cast<flag>(opt) ) {
@@ -692,22 +764,8 @@ namespace CLI
             }
 
             try {
-
-            // TODO: implement the convertion properly 
-            // if ( auto optString = std::dynamic_pointer_cast<option<std::string>>(opt) )
-            //     *optString = args.front();
-            
-            // else if ( auto optInt = std::dynamic_pointer_cast<option<int>>(opt) )
-            //     *optInt = std::stoi(args.front());
-            
-            // else if ( auto optFloat  = std::dynamic_pointer_cast<option<float>>(opt) )
-            //     *optFloat = std::stof(args.front());
-            
-            // else if ( auto optChar = std::dynamic_pointer_cast<option<char>>(opt) )
-            //     *optChar = args.front().front();
-                
-            args.pop();
-
+                *opt = args.front();
+                args.pop();
             }
             catch (...) {
                 _wrong.emplace_back("Value " + args.front() + " is not allowed " + temp_option_name);
