@@ -90,6 +90,7 @@ namespace CLI
      *  \see option flag clipper
      */
     class option_base {
+        friend class clipper;
     protected:
         std::string _vname { "value" }; ///< Name of the type that the option holds.
         std::string _doc;
@@ -97,10 +98,12 @@ namespace CLI
 
         inline static uint32_t any_req { }; ///< Holds the number of required options.
 
+    protected:
+        virtual void assign(std::string_view) = 0;
+        virtual void operator=(std::string_view) = 0;
+
     public:
         virtual ~option_base() = default;
-        virtual assign(std::string_view) = 0;
-        virtual operator=(std::string_view) = 0;
         virtual std::string value_info() const noexcept {};
 
         /**
@@ -126,12 +129,23 @@ namespace CLI
      */
     template<option_types Tp>
     class option : public option_base {
+    public:
+        using predicate = bool (*)(const Tp&); ///< Type of function that checks weather the given value meets some requirements
         friend class clipper;
+    
+    private:
 
         Tp* _ptr = nullptr;         ///< Pointer where to write parsed value to.
-        std::set<Tp> _match_list;   ///< Allowed values (if empty all viable values are allowed).
+        std::string _match_func_doc; ///< Documentation of the requirements of a \ref predicate function i.e. [0; 1], length < 10, lower case
+        predicate _match_func = nullptr; ///< Function that checks wheather the value is allowed.
+        std::set<Tp> _match_list;   ///< Contains allowed values (if empty all viable values are allowed).
 
-
+        bool validate(const Tp& __val) const {
+            if (nullptr == _match_func)
+                return _match_list.empty() || _match_list.contains(__val);
+            else
+                return _match_func(__val) && (_match_list.empty() || _match_list.contains(__val));
+        }
 
     protected:
         /**
@@ -141,15 +155,14 @@ namespace CLI
         inline void assign(std::string_view val) override {
             if constexpr (std::is_same_v<Tp, std::string>) {
 
-                if (_match_list.empty() || _match_list.contains(val))
-                    *_ptr = val;
-                else
+                *_ptr = val;
+                if (!validate(*_ptr))
                     throw std::logic_error("Value is not allowed");
 
 
             } else if constexpr (is_character<Tp>) {
 
-                if (_match_list.empty() || _match_list.contains(val.front()))
+                if (validate(val.front()))
                     *_ptr = val.front();
                 else
                     throw std::logic_error("Value is not allowed");
@@ -158,8 +171,7 @@ namespace CLI
 
                 Tp temp_v;
 
-                if (std::from_chars(val.begin(), val.end(), temp_v) &&
-                    (_match_list.empty() || _match_list.contains(temp_v)))
+                if (std::from_chars(val.begin(), val.end(), temp_v).ec == std::errc{} && validate(temp_v))
                     *_ptr = temp_v;
                 else
                     throw std::logic_error("Value is not allowed");
@@ -232,14 +244,41 @@ namespace CLI
 
 
         /**
-         *  \brief  Sets allowed values.
+         *  \brief  Sets allowed values \ref allows().
          *  \param  val Values of the types convertible to the option types.
          *  \return Reference to itself.
+         *  \see match()
          */
         template<typename... Args>
-        option& match(Args... val) {
-            static_assert((std::is_convertible<std::decay_t<Args>, Tp>::value && ...), "All arguments must be of type Tp");
+        option& match(Args&&... val) {
+            static_assert((std::is_convertible_v<std::decay_t<Args>, Tp> && ...), "All arguments must be of type Tp or convertible to type Tp");
             (_match_list.insert(std::forward<Args>(val)), ... );
+            return *this;
+        }
+
+
+        /**
+         *  \brief  Sets allowed values (same as \ref match()).
+         *  \param  val Values of the types convertible to the option types.
+         *  \return Reference to itself.
+         *  \see match()
+         */
+        template<typename... Args>
+        option& allows(Args&&... val) {
+            return match(std::forward<Args>(val)...);
+        }
+
+
+        /**
+         *  \brief  Sets a function that validates the option value.
+         *  \param  doc Description of the requirements of the given function, i.e. [0; 1], length < 10, lower case.
+         *  \param  pred Function of type \ref predicate that checks whether the given value is valid (meets some requrements).
+         *  \return Reference to itself.
+         *  \see predicate allows()
+         */
+        option& match(std::string_view doc, predicate pred) {
+            _match_func_doc = doc;
+            _match_func = pred;
             return *this;
         }
 
@@ -311,7 +350,7 @@ namespace CLI
          *  \brief Converts and assigns a value to an option.
          *  \param val Value to assign.
          */
-        inline void assign(std::string_view val = "") override {
+        inline void assign(std::string_view val) override {
             *_ptr = true;
         }
 
@@ -320,7 +359,7 @@ namespace CLI
          *  \brief Converts and assigns a value to an option.
          *  \param val Value to assign.
          */
-        inline void operator=(std::string_view val = "") override {
+        inline void operator=(std::string_view val) override {
             *_ptr = true;
         }
 
