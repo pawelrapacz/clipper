@@ -173,7 +173,7 @@ namespace CLI
          *  \brief  Sets allowed values \ref allows().
          *  \param  val Values of the types convertible to the option types.
          *  \return Reference to itself.
-         *  \see match()
+         *  \see allow()
          */
         template<typename... Args>
         option& match(Args&&... val) {
@@ -190,7 +190,7 @@ namespace CLI
          *  \see match()
          */
         template<typename... Args>
-        option& allows(Args&&... val) {
+        option& allow(Args&&... val) {
             return match(std::forward<Args>(val)...);
         }
 
@@ -198,17 +198,28 @@ namespace CLI
         /**
          *  \brief  Sets a function that validates the option value.
          *  \param  doc Description of the requirements of the given function, i.e. [0; 1], length < 10, lower case.
-         *  \param  pred Function of type \ref predicate that checks whether the given value is valid (meets some requrements).
+         *  \param  pred Function of type \ref predicate that checks whether the given value is valid (meets some requirements).
          *  \return Reference to itself.
-         *  \see predicate allows()
+         *  \see predicate
          */
-        option& match(std::string_view doc, predicate pred) {
+        option& validate(std::string_view doc, predicate pred) {
             _match_func_doc = doc;
             _match_func = pred;
             return *this;
         }
 
 
+        /**
+         *  \brief  Sets a function that validates the option value (same as \ref validate()).
+         *  \param  doc Description of the requirements of the given function, i.e. [0; 1], length < 10, lower case.
+         *  \param  pred Function of type \ref predicate that checks whether the given value is valid (meets some requirements).
+         *  \return Reference to itself.
+         *  \see predicate validate() CLI::pred
+         */
+        option& require(std::string_view doc, predicate pred) {
+            return validate(doc, pred);
+        }
+        
         /**
          *  \brief  Sets the option description.
          *  \param  doc Option information (documentation).
@@ -830,3 +841,52 @@ namespace CLI
     };
 
 } // namespace CLI
+
+
+
+namespace CLI::pred {
+
+    template<typename Tp>
+    concept numeric =
+        std::negation_v<std::is_same<Tp, bool>> && (
+            std::is_integral_v<Tp>       ||
+            std::is_floating_point_v<Tp>
+        );
+
+
+    template<numeric Tp, Tp V1, Tp V2>
+    bool between(const Tp& __val) {
+        return V1 < __val && __val < V2;
+    }
+
+
+    template<numeric Tp, Tp V1, Tp V2>
+    bool ibetween(const Tp& __val) {
+        return V1 <= __val && __val <= V2;
+    }
+
+
+    template<numeric Tp, Tp V>
+    bool grater_than(const Tp& __val) {
+        return V < __val;
+    }
+
+
+    template<numeric Tp, Tp V>
+    bool igrater_than(const Tp& __val) {
+        return V <= __val;
+    }
+
+
+    template<numeric Tp, Tp V>
+    bool less_than(const Tp& __val) {
+        return V > __val;
+    }
+
+
+    template<numeric Tp, Tp V>
+    bool iless_than(const Tp& __val) {
+        return V >= __val;
+    }
+
+} // namespace CLI::pred
