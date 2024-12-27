@@ -578,9 +578,9 @@ namespace CLI
          */
         template<option_types Tp>
         option<Tp>& add_option(std::string_view name) {
-            _options[name] = std::make_shared<option<Tp>>();
-            _option_names[name];
-            return *std::static_pointer_cast<option<Tp>>(_options[name]);
+            _options[name.data()] = std::make_shared<option<Tp>>();
+            _option_names[name.data()];
+            return *std::static_pointer_cast<option<Tp>>(_options[name.data()]);
         }
 
         /**
@@ -593,10 +593,10 @@ namespace CLI
          */
         template<option_types Tp>
         option<Tp>& add_option(std::string_view name, std::string_view alt_name) {
-            _options[name] = std::make_shared<option<Tp>>();
-            _options[alt_name] = _options[name];
-            _option_names[name] = alt_name;
-            return *std::static_pointer_cast<option<Tp>>(_options[name]);
+            _options[name.data()] = std::make_shared<option<Tp>>();
+            _options[alt_name.data()] = _options[name.data()];
+            _option_names[name.data()] = alt_name;
+            return *std::static_pointer_cast<option<Tp>>(_options[name.data()]);
         }
 
         /**
@@ -606,9 +606,9 @@ namespace CLI
          *  \return Reference to the created flag.
          */
         option<bool>& add_flag(std::string_view name) {
-            _options[name] = std::make_shared<option<bool>>();
-            _flag_names[name];
-            return *std::static_pointer_cast<option<bool>>(_options[name]);
+            _options[name.data()] = std::make_shared<option<bool>>();
+            _flag_names[name.data()];
+            return *std::static_pointer_cast<option<bool>>(_options[name.data()]);
         }
 
         /**
@@ -619,10 +619,10 @@ namespace CLI
          *  \return Reference to the created flag.
          */
         option<bool>& add_flag(std::string_view name, std::string_view alt_name) {
-            _options[name] = std::make_shared<option<bool>>();
-            _options[alt_name] = _options[name];
-            _flag_names[name] = alt_name;
-            return *std::static_pointer_cast<option<bool>>(_options[name]);
+            _options[name.data()] = std::make_shared<option<bool>>();
+            _options[alt_name.data()] = _options[name.data()];
+            _flag_names[name.data()] = alt_name;
+            return *std::static_pointer_cast<option<bool>>(_options[name.data()]);
         }
 
 
@@ -634,7 +634,7 @@ namespace CLI
          *  \return Help flag reference.
          */
         option<bool>& help_flag(std::string_view name, std::string_view alt_name = "") {
-            _help_flag = {name, alt_name};
+            _help_flag = {name.data(), alt_name.data()};
             _help_flag.fhndl.doc("displays help");
             return _help_flag.fhndl;
         }
@@ -648,7 +648,7 @@ namespace CLI
          *  \return Help flag reference.
          */
         option<bool>& version_flag(std::string_view name, std::string_view alt_name = "") {
-            _version_flag = {name, alt_name};
+            _version_flag = {name.data(), alt_name.data()};
             _version_flag.fhndl.doc("displays version information");
             return _version_flag.fhndl;
         }
@@ -792,7 +792,7 @@ namespace CLI
             std::string temp_option_name = std::move(args.front());
             args.pop();
 
-            if ( auto optFlag = std::dynamic_pointer_cast<flag>(opt) ) {
+            if ( auto optFlag = std::dynamic_pointer_cast<option<bool>>(opt) ) {
                 *optFlag = true;
                 return;
             }
