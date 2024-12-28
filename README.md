@@ -139,7 +139,7 @@ int main(int argc, char** argv) {
         .match(1, 2, 3, 13, 14);
         
 
-    if (not (cli.parse(argc, argv) or cli.wrong.empty())) {
+    if (not cli.parse(argc, argv) or not cli.wrong.empty()) {
         for (auto& i: cli.wrong)
             std::cout << i << "\n";
         return 1;
