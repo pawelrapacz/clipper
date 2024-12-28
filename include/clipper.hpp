@@ -30,7 +30,6 @@
 #include <set>
 #include <string>
 #include <string_view>
-#include <cstring>
 #include <charconv>
 #include <sstream>
 #include <iomanip>
@@ -41,6 +40,19 @@
  */
 namespace CLI
 {
+    class clipper;
+
+    class option_base;
+
+    template<typename Tp>
+    class option;
+
+
+    using arg_name_map = std::map<std::string, std::string>; ///< Container for storing option names
+    using option_map = std::unordered_map<std::string, std::shared_ptr<option_base>>; ///< Container for storing options
+
+
+
     /**
      *  \brief Allowed option types. (int, float, char, std::string)
      */
@@ -69,19 +81,6 @@ namespace CLI
 
 
 
-
-    class clipper;
-
-    class option_base;
-
-    template<typename Tp>
-    class option;
-
-
-    using arg_name_map = std::map<std::string, std::string>;
-    using option_map = std::unordered_map<std::string, std::shared_ptr<option_base>>;
-
-
     /**
      *  \brief Allows casting option pointers.
      *  \see option flag clipper
@@ -90,17 +89,17 @@ namespace CLI
         friend class clipper;
     protected:
         std::string _vname { "value" }; ///< Name of the type that the option holds.
-        std::string _doc;
-        bool _req { false };
+        std::string _doc; ///< Documentation of the option
+        bool _req { false }; ///< Stores information about optioin requirement
 
         inline static uint32_t any_req { }; ///< Holds the number of required options.
 
     protected:
-        virtual void assign(std::string_view) = 0;
-        virtual void operator=(std::string_view) = 0;
+        virtual void assign(std::string_view) = 0; ///< Converts and assigns a value to an option.
+        virtual void operator=(std::string_view) = 0; ///< Converts and assigns a value to an option.
 
     public:
-        virtual ~option_base() = default;
+        virtual ~option_base() = default; ///< Virtual default constructor.
         virtual std::string value_info() const noexcept {};
 
         /**
@@ -170,7 +169,7 @@ namespace CLI
 
 
         /**
-         *  \brief  Sets allowed values \ref allows().
+         *  \brief  Sets allowed values.
          *  \param  val Values of the types convertible to the option types.
          *  \return Reference to itself.
          *  \see allow()
@@ -244,7 +243,7 @@ namespace CLI
 
         /**
          *  \brief  Creates information about the allowed values of an option.
-         *  \return Information in format <type> or (val1 val2 ...) if the value has to match values set with match().
+         *  \return Information in format \<type\> or (val1 val2 ...) if the value has to match values set with match().
          */
         std::string value_info() const noexcept override {
             if (_match_list.empty()) {
@@ -269,21 +268,6 @@ namespace CLI
                 list.pop_back();
                 return "(" + list + ")";
             }
-        }
-
-    
-    private:
-        Tp* _ptr = nullptr;         ///< Pointer where to write parsed value to.
-        std::string _match_func_doc; ///< Documentation of the requirements of a \ref predicate function i.e. [0; 1], length < 10, lower case
-        predicate _match_func = nullptr; ///< Function that checks wheather the value is allowed.
-        std::set<Tp> _match_list;   ///< Contains allowed values (if empty all viable values are allowed).
-
-
-        bool validate(const Tp& __val) const {
-            if (nullptr == _match_func)
-                return _match_list.empty() || _match_list.contains(__val);
-            else
-                return _match_func(__val) && (_match_list.empty() || _match_list.contains(__val));
         }
 
 
@@ -341,12 +325,33 @@ namespace CLI
                 throw std::logic_error("Value is not allowed");
             }
         }
+        
+
+        /**
+         *  \brief Validates a given value with an option requirements.
+         *  \param val Value to perform validation on
+         *  \return True if the given value is valid, false otherwise.
+         *  \see match() require()
+         */
+        bool validate(const Tp& val) const {
+            if (nullptr == _match_func)
+                return _match_list.empty() || _match_list.contains(val);
+            else
+                return _match_func(val) && (_match_list.empty() || _match_list.contains(val));
+        }
+    
+
+    private:
+        Tp* _ptr = nullptr;         ///< Pointer where to write parsed value to.
+        std::string _match_func_doc; ///< Documentation of the requirements of a \ref predicate function i.e. [0; 1], length < 10, lower case
+        predicate _match_func = nullptr; ///< Function that checks wheather the value is allowed.
+        std::set<Tp> _match_list;   ///< Contains allowed values (if empty all viable values are allowed).
     };
 
 
     /**
      *  \brief  Contains flag properties.
-     *  \see    clipper
+     *  \see    clipper clipper::add_flag()
      */
     template<>
     class option<bool> : public option_base {
@@ -392,10 +397,6 @@ namespace CLI
         }
 
 
-    private:
-        bool* _ptr = nullptr; ///< Pointer where to write parsed value (state) to.
-
-
     protected:
         /**
          *  \brief Converts and assigns a value to an option.
@@ -421,6 +422,10 @@ namespace CLI
         inline void operator=(bool val) {
             *_ptr = val;
         }
+
+
+    private:
+        bool* _ptr = nullptr; ///< Pointer where to write parsed value (state) to.
     };
 
 
@@ -844,8 +849,16 @@ namespace CLI
 
 
 
-namespace CLI::pred {
 
+/**
+ * \brief Namespace that contains template predicates for \ref option "options".
+ * \see option option::predicate option::validate()
+ */
+namespace CLI::pred {
+    /**
+     * \brief Allowed predicate types.
+     * \see option option::predicate
+     */
     template<typename Tp>
     concept numeric =
         std::negation_v<std::is_same<Tp, bool>> && (
@@ -854,39 +867,77 @@ namespace CLI::pred {
         );
 
 
+    /**
+     * \brief Predicate that checks whether a value is between bounds (excludes the bounds).
+     * \tparam Tp Type of the value to check.
+     * \tparam V1 First (smaller) bound (compile-time constant).
+     * \tparam V2 Second (greater) bound (compile-time constant).
+     * \see option option::predicate option::validate()
+     */
     template<numeric Tp, Tp V1, Tp V2>
-    bool between(const Tp& __val) {
-        return V1 < __val && __val < V2;
+    bool between(const Tp& val) {
+        return V1 < val && val < V2;
     }
 
 
+    /**
+     * \brief Predicate that checks whether a value is between bounds (includes the bounds).
+     * \tparam Tp Type of the value to check.
+     * \tparam V1 First (smaller) bound (compile-time constant).
+     * \tparam V2 Second (greater) bound (compile-time constant).
+     * \see option option::predicate option::validate()
+     */
     template<numeric Tp, Tp V1, Tp V2>
-    bool ibetween(const Tp& __val) {
-        return V1 <= __val && __val <= V2;
+    bool ibetween(const Tp& val) {
+        return V1 <= val && val <= V2;
     }
 
 
+    /**
+     * \brief Predicate that checks whether a value is greater than a number (excludes the number).
+     * \tparam Tp Type of the value to check.
+     * \tparam V number that the given value will be compared to.
+     * \see option option::predicate option::validate()
+     */
     template<numeric Tp, Tp V>
-    bool grater_than(const Tp& __val) {
-        return V < __val;
+    bool grater_than(const Tp& val) {
+        return V < val;
     }
 
 
+    /**
+     * \brief Predicate that checks whether a value is greater than a number (includes the number).
+     * \tparam Tp Type of the value to check.
+     * \tparam V number that the given value will be compared to.
+     * \see option option::predicate option::validate()
+     */
     template<numeric Tp, Tp V>
-    bool igrater_than(const Tp& __val) {
-        return V <= __val;
+    bool igrater_than(const Tp& val) {
+        return V <= val;
     }
 
 
+    /**
+     * \brief Predicate that checks whether a value is less than a number (excludes the number).
+     * \tparam Tp Type of the value to check.
+     * \tparam V number that the given value will be compared to.
+     * \see option option::predicate option::validate()
+     */
     template<numeric Tp, Tp V>
-    bool less_than(const Tp& __val) {
-        return V > __val;
+    bool less_than(const Tp& val) {
+        return V > val;
     }
 
 
+    /**
+     * \brief Predicate that checks whether a value is less than a number (includes the number).
+     * \tparam Tp Type of the value to check.
+     * \tparam V number that the given value will be compared to.
+     * \see option option::predicate option::validate()
+     */
     template<numeric Tp, Tp V>
-    bool iless_than(const Tp& __val) {
-        return V >= __val;
+    bool iless_than(const Tp& val) {
+        return V >= val;
     }
 
 } // namespace CLI::pred
