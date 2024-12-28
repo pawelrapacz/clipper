@@ -876,6 +876,7 @@ namespace CLI::pred {
      */
     template<numeric Tp, Tp V1, Tp V2>
     bool between(const Tp& val) {
+        static_assert(V1 < V2, "V1 must be less than V2."); 
         return V1 < val && val < V2;
     }
 
@@ -889,6 +890,7 @@ namespace CLI::pred {
      */
     template<numeric Tp, Tp V1, Tp V2>
     bool ibetween(const Tp& val) {
+        static_assert(V1 < V2, "V1 must be less than V2.");
         return V1 <= val && val <= V2;
     }
 
