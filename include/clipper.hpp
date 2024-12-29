@@ -34,6 +34,14 @@
 #include <iomanip>
 
 
+
+#ifndef CLIPPER_HELP_ARG_FIELD_WIDTH
+    /// \brief Defines the width of the argument name field in help output.
+    #define CLIPPER_HELP_ARG_FIELD_WIDTH    22
+#endif
+
+
+
 /**
  *  \brief Contains all the clipper utilities
  */
@@ -95,9 +103,32 @@ namespace CLI
 
 
     protected:
+        /**
+         * \brief Returns option synopsis in format: alt_name(or name) [value_info].
+         * \return Option synopsis
+         */
+        std::string synopsis() const noexcept
+        { return alt_name + " " + value_info(); }
+        
+        /**
+         * \brief Creates detailed option synopsis in format: [alt_name], name [value_info].
+         * \return Detailed option synopsis
+         */
+        std::string detailed_synopsis() const noexcept
+        { return (alt_name.empty() ? name : alt_name + ", " + name + " ") + value_info(); }
+
+        /**
+         * \brief Creates option value info.
+         * \return Option value info (empty by default)
+         * 
+         */
+        virtual std::string value_info() const noexcept
+        { return ""; };
+
+
         virtual void assign(std::string_view) = 0; ///< Converts and assigns a value to an option.
         virtual void operator=(std::string_view) = 0; ///< Converts and assigns a value to an option.
-
+        
 
     public:
         const std::string& name;
@@ -112,7 +143,7 @@ namespace CLI
             : name(nm), alt_name(anm) {}
 
         virtual ~option_base() = default; ///< Virtual default constructor.
-        virtual std::string value_info() const noexcept {};
+
 
         /**
          *  \brief  Accesses option documentation.
@@ -120,6 +151,7 @@ namespace CLI
          */
         const std::string& doc() const noexcept
         { return _doc; }
+
 
         /**
          *  \brief  Checks whether the option is required.
@@ -697,80 +729,70 @@ namespace CLI
 
 
         /**
-         *  \brief  Creates a documentation (help) of the application.
+         *  \brief  Creates a documentation (man page, help) of the application.
          *  \return Documentation.
          */
-        // inline std::string make_help() const noexcept {
-        //     constexpr int space = 35;
-        //     std::ostringstream help;
+        inline std::string make_help() const noexcept {
+            auto add_help = [](const option_base* const opt, std::ostringstream& stream) {
+                auto snps = std::move(opt->detailed_synopsis());
 
-        //     if (not description().empty())
-        //         help << "DESCRIPTION\n\t" << description() << "\n\n";
+                if (CLIPPER_HELP_ARG_FIELD_WIDTH <= snps.length()) {
+                    stream << '\t' << snps << "\n\t" << std::string(CLIPPER_HELP_ARG_FIELD_WIDTH, ' ') << opt->doc() << '\n';
+                }
+                else
+                    stream << '\t' << std::left << std::setw(CLIPPER_HELP_ARG_FIELD_WIDTH) << snps << opt->doc() << '\n';
+            };
 
-
-
-        //     help << "SYNOPSIS\n\t" << _app_name;
-
-        //     for (auto [name, alt_name] : _option_names)
-        //         if (_options.at(name)->req())
-        //            help << " " << (alt_name.empty() ? name : alt_name) << " " << _options.at(name)->value_info();
-
-        //     for (auto [name, alt_name] : _flag_names)
-        //         if (_options.at(name)->req())
-        //             help << " " << (alt_name.empty() ? name : alt_name);
-
-        //     help << " [...]\n";
-
-
-
-
+            std::ostringstream flags;
+            std::ostringstream options;
             
-        //     if (not _flag_names.empty())
-        //         help << "\nFLAGS\n";
+            if (_help_flag.is_set())
+                add_help(&_help_flag.hndl, flags);
 
+            if (_version_flag.is_set())
+                add_help(&_version_flag.hndl, flags);
 
-        //     if (not _help_flag.name.empty()) {
-        //         help << "\t" << std::left << std::setw(space) << std::setfill(' ') <<
-        //         (_help_flag.alt_name.empty() ? "" : _help_flag.alt_name + ", ") + _help_flag.name <<
-        //         _help_flag.fhndl.doc() << "\n";
-        //     }
-
-        //     if (not _version_flag.name.empty()) {
-        //         help << "\t" << std::left << std::setw(space) << std::setfill(' ') <<
-        //         (_version_flag.alt_name.empty() ? "" : _version_flag.alt_name + ", ") + _version_flag.name <<
-        //         _version_flag.fhndl.doc() << "\n";
-        //     }
-
-        //     for (auto [name, alt_name] : _flag_names) {
-        //         help << "\t" << std::left << std::setw(space) << std::setfill(' ') <<
-        //         (alt_name.empty() ? "" : alt_name + ", ") + name <<
-        //         _options.at(name)->doc() << "\n";
-        //     }
+            for (auto& opt : _options) {
+                if (dynamic_cast<option<bool>*>(opt.get()))
+                    add_help(opt.get(), flags);
+                else
+                    add_help(opt.get(), options);
+            }
 
 
 
-        //     if (not _option_names.empty())
-        //         help << "\nOPTIONS\n";
+            std::ostringstream help;
 
-        //     for (auto [name, alt_name] : _option_names) {
-        //         help << "\t" << std::left << std::setw(space) << std::setfill(' ') <<
-        //         (alt_name.empty() ? "" : alt_name + ", ") + name + " " +
-        //         _options.at(name)->value_info()<<
-        //         _options.at(name)->doc() << "\n";
-        //     }
+            if (not _app_description.empty())
+                help << "DESCRIPTION\n\t" << description() << "\n\n";
+            
+            // SYNOPSIS
+            help << "SYNOPSIS\n\t" << _app_name;
 
+            for (auto& opt : _options)
+                if (opt->req())
+                    help << " " << opt->synopsis();
 
-        //     if (not _license_notice.empty())
-        //         help << "\nLICENSE\n\t" << _license_notice << "\n";
+            help << " [...]\n";
+            // end SYNOPSIS
 
-        //     if (not _author.empty())
-        //         help << "\nAUTHOR\n\t" << _author << "\n";
+            if (not flags.view().empty())
+                help << "FLAGS\n" << flags.view();
 
-        //     if (not _web_link.empty())
-        //         help << "\n" << _web_link << "\n";
+            if (not options.view().empty())
+                help << "OPTIONS\n" << options.view();
 
-        //     return help.str();
-        // }
+            if (not _license_notice.empty())
+                help << "\nLICENSE\n\t" << _license_notice << "\n";
+
+            if (not _author.empty())
+                help << "\nAUTHOR\n\t" << _author << "\n";
+
+            if (not _web_link.empty())
+                help << "\n" << _web_link << "\n";
+
+            return help.str();
+        }
 
 
         /**
