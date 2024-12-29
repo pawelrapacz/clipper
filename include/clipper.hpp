@@ -23,7 +23,6 @@
 #include <type_traits>
 #include <memory>
 #include <utility>
-#include <map>
 #include <unordered_map>
 #include <queue>
 #include <vector>
@@ -48,8 +47,8 @@ namespace CLI
     class option;
 
 
-    using arg_name_map = std::map<std::string, std::string>; ///< Container for storing option names
-    using option_map = std::unordered_map<std::string, std::shared_ptr<option_base>>; ///< Container for storing options
+    using option_name_map = std::unordered_map<std::string, std::size_t>; ///< Container for storing option names
+    using option_vec = std::vector<std::unique_ptr<option_base>>; ///< Container for storing options
 
 
 
@@ -94,11 +93,24 @@ namespace CLI
 
         inline static uint32_t any_req { }; ///< Holds the number of required options.
 
+
     protected:
         virtual void assign(std::string_view) = 0; ///< Converts and assigns a value to an option.
         virtual void operator=(std::string_view) = 0; ///< Converts and assigns a value to an option.
 
+
     public:
+        const std::string& _name;
+        const std::string& _alt_name;
+
+
+    public:
+        option_base(const std::string& nm)
+            : _name(nm), _alt_name(nm) {}
+
+        option_base(const std::string& nm, const std::string& anm)
+            : _name(nm), _alt_name(anm) {}
+
         virtual ~option_base() = default; ///< Virtual default constructor.
         virtual std::string value_info() const noexcept {};
 
@@ -129,10 +141,16 @@ namespace CLI
 
     public:
         using predicate = bool (*)(const Tp&); ///< Type of function that checks weather the given value meets some requirements
-
         using option_base::doc;
-        option() = default;     ///< Default constructor.
-        ~option() = default;    ///< Default destructor.
+
+
+        option(const std::string& nm)
+            : option_base(nm) {}
+            
+        option(const std::string& nm, const std::string& anm)
+            : option_base(nm, anm) {}
+
+        ~option() = default; ///< Default destructor.
 
 
         /**
@@ -359,7 +377,14 @@ namespace CLI
 
     public:
         using option_base::doc;
-        option() = default;   ///< Default constructor.
+
+
+        option(const std::string& nm)
+            : option_base(nm) {}
+            
+        option(const std::string& nm, const std::string& anm)
+            : option_base(nm, anm) {}
+
         ~option() = default;  ///< Default destructor.
 
 
@@ -426,17 +451,6 @@ namespace CLI
 
     private:
         bool* _ptr = nullptr; ///< Pointer where to write parsed value (state) to.
-    };
-
-
-
-    /**
-     *  \brief Used to hold information about flags like --help or --version.
-     */
-    struct info_flag {
-        std::string name;
-        std::string alt_name;
-        option<bool> fhndl;
     };
 
 
@@ -592,12 +606,14 @@ namespace CLI
          *  \param  name Option name.
          *  \return Reference to the created option.
          */
-        template<option_types Tp>
+        template<typename Tp>
+            requires std::is_same_v<Tp, bool> || option_types<Tp>
         option<Tp>& add_option(std::string_view name) {
-            _options[name.data()] = std::make_shared<option<Tp>>();
-            _option_names[name.data()];
-            return *std::static_pointer_cast<option<Tp>>(_options[name.data()]);
+            _names[name.data()] = _options.size();
+            _options.emplace_back(std::make_unique<option<Tp>>(_names.find(name.data())->first));
+            return *static_cast<option<Tp>*>(_options.back().get());
         }
+
 
         /**
          *  \brief  Adds an option of a given type.
@@ -607,139 +623,152 @@ namespace CLI
          *  \param  alt_name Secondary option name.
          *  \return Reference to the created option.
          */
-        template<option_types Tp>
+        template<typename Tp>
+            requires std::is_same_v<Tp, bool> || option_types<Tp>
         option<Tp>& add_option(std::string_view name, std::string_view alt_name) {
-            _options[name.data()] = std::make_shared<option<Tp>>();
-            _options[alt_name.data()] = _options[name.data()];
-            _option_names[name.data()] = alt_name;
-            return *std::static_pointer_cast<option<Tp>>(_options[name.data()]);
+            _names[name.data()] = _options.size();
+            _names[alt_name.data()] = _options.size();
+
+            auto& nameref = _names.find(name.data())->first;
+            auto& alt_nameref = _names.find(alt_name.data())->first;
+            _options.emplace_back(std::make_unique<option<Tp>>(nameref, alt_nameref));
+
+            return *static_cast<option<Tp>*>(_options.back().get());
         }
 
+
         /**
-         *  \brief  Adds an flag of a given type.
+         *  \brief  Adds a flag.
+         * 
+         *  This function is same as \ref add_option() "add_option<bool>()".
+         * 
          *  \see    flag
          *  \param  name Flag name.
          *  \return Reference to the created flag.
          */
         option<bool>& add_flag(std::string_view name) {
-            _options[name.data()] = std::make_shared<option<bool>>();
-            _flag_names[name.data()];
-            return *std::static_pointer_cast<option<bool>>(_options[name.data()]);
+            return add_option<bool>(name);
         }
 
+
         /**
-         *  \brief  Adds an flag of a given type.
+         *  \brief  Adds a flag.
+         * 
+         *  This function is same as \ref add_option() "add_option<bool>()".
+         * 
          *  \see    flag
          *  \param  name Primary flag name.
          *  \param  alt_name Secondary flag name.
          *  \return Reference to the created flag.
          */
         option<bool>& add_flag(std::string_view name, std::string_view alt_name) {
-            _options[name.data()] = std::make_shared<option<bool>>();
-            _options[alt_name.data()] = _options[name.data()];
-            _flag_names[name.data()] = alt_name;
-            return *std::static_pointer_cast<option<bool>>(_options[name.data()]);
+            return add_option<bool>(name, alt_name);
         }
 
 
-        /**
-         *  \brief  Sets/activates the help flag.
-         *  \see    flag
-         *  \param  name Primary flag name.
-         *  \param  alt_name Secondary flag name. (optional)
-         *  \return Help flag reference.
-         */
-        option<bool>& help_flag(std::string_view name, std::string_view alt_name = "") {
-            _help_flag = {name.data(), alt_name.data()};
-            _help_flag.fhndl.doc("displays help");
-            return _help_flag.fhndl;
-        }
+        // /**
+        //  *  \brief  Sets/activates the help flag.
+        //  *  \see    flag
+        //  *  \param  name Primary flag name.
+        //  *  \param  alt_name Secondary flag name. (optional)
+        //  *  \return Help flag reference.
+        //  */
+        // option<bool>& help_flag(std::string_view name, std::string_view alt_name = "") {
+        //     _flag_names[name.data()] = alt_name;
+        //     _help_flag.doc("displays help");
+        //     return _help_flag.fhndl;
+        // }
 
 
-        /**
-         *  \brief  Sets/activates the version flag.
-         *  \see    flag
-         *  \param  name Primary flag name.
-         *  \param  alt_name Secondary flag name. (optional)
-         *  \return Help flag reference.
-         */
-        option<bool>& version_flag(std::string_view name, std::string_view alt_name = "") {
-            _version_flag = {name.data(), alt_name.data()};
-            _version_flag.fhndl.doc("displays version information");
-            return _version_flag.fhndl;
-        }
+        // /**
+        //  *  \brief  Sets/activates the version flag.
+        //  *  \see    flag
+        //  *  \param  name Primary flag name.
+        //  *  \param  alt_name Secondary flag name. (optional)
+        //  *  \return Help flag reference.
+        //  */
+        // option<bool>& version_flag(std::string_view name, std::string_view alt_name = "") {
+        //     _flag_names[name.data()] = alt_name;
+        //     _version_flag.doc("displays version information");
+        //     return _version_flag.fhndl;
+        // }
 
 
         /**
          *  \brief  Creates a documentation (help) of the application.
          *  \return Documentation.
          */
-        inline std::string make_help() const noexcept {
-            constexpr int space = 35;
-            std::ostringstream help;
+        // inline std::string make_help() const noexcept {
+        //     constexpr int space = 35;
+        //     std::ostringstream help;
 
-            if (not description().empty())
-                help << "DESCRIPTION\n\t" << description() << "\n\n";
+        //     if (not description().empty())
+        //         help << "DESCRIPTION\n\t" << description() << "\n\n";
 
 
 
-            help << "SYNOPSIS\n\t" << _app_name;
+        //     help << "SYNOPSIS\n\t" << _app_name;
 
-            for (auto [name, alt_name] : _option_names)
-                if (_options.at(name)->req())
-                   help << " " << (alt_name.empty() ? name : alt_name) << " " << _options.at(name)->value_info();
+        //     for (auto [name, alt_name] : _option_names)
+        //         if (_options.at(name)->req())
+        //            help << " " << (alt_name.empty() ? name : alt_name) << " " << _options.at(name)->value_info();
 
-            for (auto [name, alt_name] : _flag_names)
-                if (_options.at(name)->req())
-                    help << " " << (alt_name.empty() ? name : alt_name);
+        //     for (auto [name, alt_name] : _flag_names)
+        //         if (_options.at(name)->req())
+        //             help << " " << (alt_name.empty() ? name : alt_name);
 
-            help << " [...]\n";
+        //     help << " [...]\n";
 
 
 
 
             
-
-            help << "\nFLAGS\n";
-            if (not _help_flag.name.empty()) {
-                help << "\t" << std::left << std::setw(space) << std::setfill(' ') <<
-                (_help_flag.alt_name.empty() ? "" : _help_flag.alt_name + ", ") + _help_flag.name <<
-                _help_flag.fhndl.doc() << "\n";
-            }
-
-            if (not _version_flag.name.empty()) {
-                help << "\t" << std::left << std::setw(space) << std::setfill(' ') <<
-                (_version_flag.alt_name.empty() ? "" : _version_flag.alt_name + ", ") + _version_flag.name <<
-                _version_flag.fhndl.doc() << "\n";
-            }
-
-            for (auto [name, alt_name] : _flag_names) {
-                help << "\t" << std::left << std::setw(space) << std::setfill(' ') <<
-                (alt_name.empty() ? "" : alt_name + ", ") + name <<
-                _options.at(name)->doc() << "\n";
-            }
+        //     if (not _flag_names.empty())
+        //         help << "\nFLAGS\n";
 
 
-            help << "\nOPTIONS\n";
-            for (auto [name, alt_name] : _option_names) {
-                help << "\t" << std::left << std::setw(space) << std::setfill(' ') <<
-                (alt_name.empty() ? "" : alt_name + ", ") + name + " " +
-                _options.at(name)->value_info()<<
-                _options.at(name)->doc() << "\n";
-            }
+        //     if (not _help_flag.name.empty()) {
+        //         help << "\t" << std::left << std::setw(space) << std::setfill(' ') <<
+        //         (_help_flag.alt_name.empty() ? "" : _help_flag.alt_name + ", ") + _help_flag.name <<
+        //         _help_flag.fhndl.doc() << "\n";
+        //     }
+
+        //     if (not _version_flag.name.empty()) {
+        //         help << "\t" << std::left << std::setw(space) << std::setfill(' ') <<
+        //         (_version_flag.alt_name.empty() ? "" : _version_flag.alt_name + ", ") + _version_flag.name <<
+        //         _version_flag.fhndl.doc() << "\n";
+        //     }
+
+        //     for (auto [name, alt_name] : _flag_names) {
+        //         help << "\t" << std::left << std::setw(space) << std::setfill(' ') <<
+        //         (alt_name.empty() ? "" : alt_name + ", ") + name <<
+        //         _options.at(name)->doc() << "\n";
+        //     }
 
 
-            if (not _license_notice.empty())
-                help << "\nLICENSE\n\t" << _license_notice << "\n";
 
-            if (not _author.empty())
-                help << "\nAUTHOR\n\t" << _author << "\n";
+        //     if (not _option_names.empty())
+        //         help << "\nOPTIONS\n";
 
-            if (not _web_link.empty())
-                help << "\n" << _web_link << "\n";
+        //     for (auto [name, alt_name] : _option_names) {
+        //         help << "\t" << std::left << std::setw(space) << std::setfill(' ') <<
+        //         (alt_name.empty() ? "" : alt_name + ", ") + name + " " +
+        //         _options.at(name)->value_info()<<
+        //         _options.at(name)->doc() << "\n";
+        //     }
 
-            return help.str();
-        }
+
+        //     if (not _license_notice.empty())
+        //         help << "\nLICENSE\n\t" << _license_notice << "\n";
+
+        //     if (not _author.empty())
+        //         help << "\nAUTHOR\n\t" << _author << "\n";
+
+        //     if (not _web_link.empty())
+        //         help << "\n" << _web_link << "\n";
+
+        //     return help.str();
+        // }
 
 
         /**
@@ -766,21 +795,22 @@ namespace CLI
                 args.push(argv[i]);
 
 
-            if (args.size() == 1 && (args.front() == _help_flag.name || args.front() == _help_flag.alt_name)) {
-                _help_flag.fhndl = true;
-                return true;
-            }
+            // if (args.size() == 1 && (args.front() == _help_flag || args.front() == _help_flag)) {
+            //     _help_flag = true;
+            //     return true;
+            // }
 
-            if (args.size() == 1 && (args.front() == _version_flag.name || args.front() == _version_flag.alt_name)) {
-                _version_flag.fhndl = true;
-                return true;
-            }
+            // if (args.size() == 1 && (args.front() == _version_flag || args.front() == _version_flag)) {
+            //     _version_flag = true;
+            //     return true;
+            // }
 
 
             while (not args.empty()) {
-                if (_options.contains(args.front())) {
-                    if (_options.at(args.front())->req()) req_count--;
-                    
+                if (_names.contains(args.front())) {
+                    if (_options[_names[args.front()]]->req())
+                        req_count--;
+
                     set_option(args);
                 }
                 else {
@@ -804,11 +834,11 @@ namespace CLI
          *  \brief Parses value of an option/flag and catches errors.
          */
         inline void set_option(std::queue<std::string>& args) {
-            std::shared_ptr<option_base>& opt = _options[args.front()];
+            auto& opt = _options[_names[args.front()]];
             std::string temp_option_name = std::move(args.front());
             args.pop();
 
-            if ( auto optFlag = std::dynamic_pointer_cast<option<bool>>(opt) ) {
+            if ( auto optFlag = dynamic_cast<option<bool>*>(opt.get()) ) {
                 *optFlag = true;
                 return;
             }
@@ -837,11 +867,10 @@ namespace CLI
         std::string _license_notice;
         std::string _web_link;
 
-        info_flag _help_flag;
-        info_flag _version_flag; 
-        option_map _options;
-        arg_name_map _option_names;
-        arg_name_map _flag_names;
+        // option<bool> _help_flag;
+        // option<bool> _version_flag; 
+        option_name_map _names;
+        option_vec _options;
         std::vector<std::string> _wrong; ///< Contains all errors encountered while parsing.
     };
 
