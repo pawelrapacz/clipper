@@ -100,16 +100,16 @@ namespace CLI
 
 
     public:
-        const std::string& _name;
-        const std::string& _alt_name;
+        const std::string& name;
+        const std::string& alt_name;
 
 
     public:
         option_base(const std::string& nm)
-            : _name(nm), _alt_name(nm) {}
+            : name(nm), alt_name(nm) {}
 
         option_base(const std::string& nm, const std::string& anm)
-            : _name(nm), _alt_name(anm) {}
+            : name(nm), alt_name(anm) {}
 
         virtual ~option_base() = default; ///< Virtual default constructor.
         virtual std::string value_info() const noexcept {};
@@ -666,32 +666,34 @@ namespace CLI
         }
 
 
-        // /**
-        //  *  \brief  Sets/activates the help flag.
-        //  *  \see    flag
-        //  *  \param  name Primary flag name.
-        //  *  \param  alt_name Secondary flag name. (optional)
-        //  *  \return Help flag reference.
-        //  */
-        // option<bool>& help_flag(std::string_view name, std::string_view alt_name = "") {
-        //     _flag_names[name.data()] = alt_name;
-        //     _help_flag.doc("displays help");
-        //     return _help_flag.fhndl;
-        // }
+        /**
+         *  \brief  Sets/activates the help flag.
+         *  \see    flag
+         *  \param  name Primary flag name.
+         *  \param  alt_name Secondary flag name. (optional)
+         *  \return Help flag reference.
+         */
+        option<bool>& help_flag(std::string_view name, std::string_view alt_name = "") {
+            _help_flag.name = name;
+            _help_flag.alt_name = alt_name;
+            _help_flag.hndl.doc("displays help");
+            return _help_flag.hndl;
+        }
 
 
-        // /**
-        //  *  \brief  Sets/activates the version flag.
-        //  *  \see    flag
-        //  *  \param  name Primary flag name.
-        //  *  \param  alt_name Secondary flag name. (optional)
-        //  *  \return Help flag reference.
-        //  */
-        // option<bool>& version_flag(std::string_view name, std::string_view alt_name = "") {
-        //     _flag_names[name.data()] = alt_name;
-        //     _version_flag.doc("displays version information");
-        //     return _version_flag.fhndl;
-        // }
+        /**
+         *  \brief  Sets/activates the version flag.
+         *  \see    flag
+         *  \param  name Primary flag name.
+         *  \param  alt_name Secondary flag name. (optional)
+         *  \return Help flag reference.
+         */
+        option<bool>& version_flag(std::string_view name, std::string_view alt_name = "") {
+            _version_flag.name = name;
+            _version_flag.alt_name = alt_name;
+            _version_flag.hndl.doc("displays version information");
+            return _version_flag.hndl;
+        }
 
 
         /**
@@ -795,15 +797,15 @@ namespace CLI
                 args.push(argv[i]);
 
 
-            // if (args.size() == 1 && (args.front() == _help_flag || args.front() == _help_flag)) {
-            //     _help_flag = true;
-            //     return true;
-            // }
+            if (args.size() == 1 && args.front() == _help_flag) {
+                _help_flag.hndl = true; 
+                return true;
+            }
 
-            // if (args.size() == 1 && (args.front() == _version_flag || args.front() == _version_flag)) {
-            //     _version_flag = true;
-            //     return true;
-            // }
+            if (args.size() == 1 && args.front() == _version_flag) {
+                _version_flag.hndl = true;
+                return true;
+            }
 
 
             while (not args.empty()) {
@@ -848,7 +850,7 @@ namespace CLI
             }
 
             try {
-                *opt = args.front();
+                *opt = args.front().data();
                 args.pop();
             }
             catch (...) {
@@ -867,8 +869,20 @@ namespace CLI
         std::string _license_notice;
         std::string _web_link;
 
-        // option<bool> _help_flag;
-        // option<bool> _version_flag; 
+
+        struct {
+            std::string name;
+            std::string alt_name;
+            option<bool> hndl {name, alt_name};
+
+            bool operator==(const std::string& str) const noexcept
+            { return name == str or alt_name == str; }
+
+            bool is_set() const noexcept
+            { return not name.empty(); }
+
+        } _help_flag, _version_flag;
+
         option_name_map _names;
         option_vec _options;
         std::vector<std::string> _wrong; ///< Contains all errors encountered while parsing.
