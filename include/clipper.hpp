@@ -934,13 +934,14 @@ namespace CLI::pred {
 
     /**
      * \brief Predicate that checks whether a value is between bounds (excludes the bounds).
-     * \tparam Tp Type of the value to check.
-     * \tparam V1 First (smaller) bound (compile-time constant).
-     * \tparam V2 Second (greater) bound (compile-time constant).
-     * \see option option::predicate option::validate()
+     * \brief V1 and V2 have to be of the same type that is \ref numeric.
+     * \tparam V1 First (smaller) bound (compile-time constant of same type as V2).
+     * \tparam V2 Second (greater) bound (compile-time constant of same type as V1).
+     * \see pred::numeric option option::predicate option::validate()
      */
-    template<numeric Tp, Tp V1, Tp V2>
-    bool between(const Tp& val) {
+    template<auto V1, auto V2>
+        requires numeric<decltype(V1)> && std::is_same_v<decltype(V1), decltype(V2)>
+    bool between(const decltype(V1)& val) {
         static_assert(V1 < V2, "V1 must be less than V2."); 
         return V1 < val && val < V2;
     }
@@ -948,13 +949,13 @@ namespace CLI::pred {
 
     /**
      * \brief Predicate that checks whether a value is between bounds (includes the bounds).
-     * \tparam Tp Type of the value to check.
-     * \tparam V1 First (smaller) bound (compile-time constant).
-     * \tparam V2 Second (greater) bound (compile-time constant).
-     * \see option option::predicate option::validate()
+     * \tparam V1 First (smaller) bound (compile-time constant of same type as V2).
+     * \tparam V2 Second (greater) bound (compile-time constant of same type as V1).
+     * \see pred::numeric option option::predicate option::validate()
      */
-    template<numeric Tp, Tp V1, Tp V2>
-    bool ibetween(const Tp& val) {
+    template<auto V1, auto V2>
+        requires numeric<decltype(V1)> && std::is_same_v<decltype(V1), decltype(V2)>
+    bool ibetween(const decltype(V1)& val) {
         static_assert(V1 < V2, "V1 must be less than V2.");
         return V1 <= val && val <= V2;
     }
@@ -962,48 +963,48 @@ namespace CLI::pred {
 
     /**
      * \brief Predicate that checks whether a value is greater than a number (excludes the number).
-     * \tparam Tp Type of the value to check.
      * \tparam V number that the given value will be compared to.
      * \see option option::predicate option::validate()
      */
-    template<numeric Tp, Tp V>
-    bool grater_than(const Tp& val) {
+    template<auto V>
+        requires numeric<decltype(V)>
+    bool grater_than(const decltype(V)& val) {
         return V < val;
     }
 
 
     /**
      * \brief Predicate that checks whether a value is greater than a number (includes the number).
-     * \tparam Tp Type of the value to check.
      * \tparam V number that the given value will be compared to.
      * \see option option::predicate option::validate()
      */
-    template<numeric Tp, Tp V>
-    bool igrater_than(const Tp& val) {
+    template<auto V>
+        requires numeric<decltype(V)>
+    bool igrater_than(const decltype(V)& val) {
         return V <= val;
     }
 
 
     /**
      * \brief Predicate that checks whether a value is less than a number (excludes the number).
-     * \tparam Tp Type of the value to check.
      * \tparam V number that the given value will be compared to.
      * \see option option::predicate option::validate()
      */
-    template<numeric Tp, Tp V>
-    bool less_than(const Tp& val) {
+    template<auto V>
+        requires numeric<decltype(V)>
+    bool less_than(const decltype(V)& val) {
         return V > val;
     }
 
 
     /**
      * \brief Predicate that checks whether a value is less than a number (includes the number).
-     * \tparam Tp Type of the value to check.
      * \tparam V number that the given value will be compared to.
      * \see option option::predicate option::validate()
      */
-    template<numeric Tp, Tp V>
-    bool iless_than(const Tp& val) {
+    template<auto V>
+        requires numeric<decltype(V)>
+    bool iless_than(const decltype(V)& val) {
         return V >= val;
     }
 
