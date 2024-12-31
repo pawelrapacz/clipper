@@ -51,23 +51,40 @@ Then you can add flags and options.<br>
 `set()` gives the variable that an option is going to save the value to (for options you have to give the name of the parameter that it is setting).
 
 ```cpp
+bool vrbs;
+std::string inpt;
+
 cli.add_flag("--verbose", "-v")
-    .set(f)
+    .set(vrbs)
     .doc("Displays verbose information");
 
 cli.add_option<std::string>("--input", "-i")
-    .set("file", i)
+    .set("file", inpt)
     .doc("Input file")
     .req();
 ```
 
-You use the `match()` function to give viable values for an option. Alse with the `set()` function you can set the default value of the option.
+You use the `match()` (or `allow()`) function to give viable values for an option. Alse with the `set()` function you can set the default value of the option.
 
 ```cpp
 cli.add_option<std::string>("--encoding", "-e")
-    .set("charset", i, "utf8")  // utf8 is the default
-    .match("utf8", "utf16", "cp1252", "latin1")
+    .set("charset", inpt, "utf8")  // utf8 is the default
+    .match("utf8", "utf16", "cp1252", "latin1") // could be .allow("utf8", ...)
     .doc("Sets the encoding");
+```
+
+The `validate()` or `require()` function allows to set a function that will check if the given option value meets your criteria.
+```cpp
+cli.add_option<uint32_t>("--iteration-count", "-c")
+    .set("number", count)  // utf8 is the default
+    .validate("[0; 100]", CLI::pred::ibetween<0, 100>)
+    .doc("Sets the iteration count");
+
+cli.add_option<std::string>("--custom-name", "-n")
+    .set("string", name)
+    .require("max 10 characters", [](const std::string& s) -> bool { return s.length() >= 10; })
+    .doc("Input file")
+    .req();
 ```
 
 To parse arguments just use `parse()`.
@@ -120,6 +137,8 @@ int main(int argc, char** argv) {
     bool show_help, show_version, flag;
     std::string input_file;
     int count;
+    double myvalue;
+    std::size_t length;
 
     cli.help_flag("--help", "-h").set(show_help);
     cli.version_flag("--version", "-v").set(show_version);
@@ -133,11 +152,21 @@ int main(int argc, char** argv) {
         .doc("Input file")
         .req();
 
-    cli.add_option<int>("--count")
+    cli.add_option<int>("--count", "-c")
         .doc("Sets count")
         .set("number", count, 13)
         .match(1, 2, 3, 13, 14);
-        
+    
+    cli.add_option<double>("--myvalue")
+        .doc("My value")
+        .set("value", myvalue, .5)
+        .validate("(0; 1)", CLI::pred::between<0., 1.>);
+
+    cli.add_option<std::size_t>("--length", "-l")
+        .doc("Output length")
+        .set("number", myvalue, .5)
+        .req()
+        .require(">10", CLI::pred::greater_than<10uz>);
 
     if (not cli.parse(argc, argv) or not cli.wrong.empty()) {
         for (auto& i: cli.wrong)
@@ -189,10 +218,10 @@ the application, options and flags.
 | `web_link()`                                         | gets the web link                                              | `const std::string&`                             |
 | `add_option<type>(name)`                             | adds a option of a given type                                  | `option&`                                        |
 | `add_option<type>(name, alt_name)`                   | adds a option of a given type with an alternative name         | `option&`                                        |
-| `add_flag(name)`                                     | adds a flag                                                    | `flag&`                                          |
-| `add_flag(name, alt_name)`                           | adds a flag with an alternative name                           | `flag&`                                          |
-| `help_flag(name, alt_name = "")`                     | sets the help flag name/names                                  | `flag&`                                          |
-| `version_flag(name, alt_name = "")`                  | sets the help flag name/name                                   | `flag&`                                          |
+| `add_flag(name)`                                     | adds a flag                                                    | `option<bool>&`                                  |
+| `add_flag(name, alt_name)`                           | adds a flag with an alternative name                           | `option<bool>&`                                  |
+| `help_flag(name, alt_name = "")`                     | sets the help flag name/names                                  | `option<bool>&`                                  |
+| `version_flag(name, alt_name = "")`                  | sets the help flag name/name                                   | `option<bool>&`                                  |
 | `make_help()`                                        | returns help page                                              | `std::string`                                    |
 | `make_version_info()`                                | returns version information                                    | `std::string`                                    |
 | `parse(argc, argv)`                                  | parses command line arguments                                  | `bool` (`true` if successful, `false` otherwise) |
@@ -202,31 +231,36 @@ the application, options and flags.
 
 ### flag class
 
-| Member     | Description                   | Return value         |
-| ---------- | ----------------------------- | -------------------- |
-| `flag()`   | constructor                   |                      |
-| `~flag()`  | destructor                    |                      |
-| `set(ref)` | sets the variable to write to | `flag&`              |
-| `req()`    | sets the flag to be required  | `flag&`              |
-| `doc(doc)` | sets the flag description     | `flag&`              |
-| `doc()`    | gets the flag description     | `const std::string&` |
+To be precise it is option<bool> class.
+
+| Member            | Description                                         | Return value         |
+| ----------------- | --------------------------------------------------- | -------------------- |
+| `option(nm)`      | constructs and sets the name reference              |                      |
+| `option(nm, anm)` | constructs and sets the name and alt_name reference |                      |
+| `~option()`       | destructor                                          |                      |
+| `set(ref)`        | sets the variable to write to                       | `option<bool>&`      |
+| `req()`           | sets the flag to be required                        | `option<bool>&`      |
+| `doc(doc)`        | sets the flag description                           | `option<bool>&`      |
+| `doc()`           | gets the flag description                           | `const std::string&` |
 
 <br>
 
 ### option class
-It is a template class that allows only: `int`, `float`, `std::string` and `char`.
+It is a template class that allows `integral types`, `floating point types` and `std::string` (CLI::option_types concept).
 
 
-| Member                      | Description                                                                              | Return value         |
-| --------------------------- | ---------------------------------------------------------------------------------------  | -------------------- |
-| `option()`                  | constructor                                                                              |                      |
-| `~option()`                 | destructor                                                                               |                      |
-| `set(value_name, ref)`      | sets the variable to write to and the value name (e.g. file, charset)                    | `option&`            |
-| `set(value_name, ref, def)` | sets the variable to write to with default value and the value name (e.g. file, charset) | `option&`            |
-| `req()`                     | sets the option to be required                                                           | `option&`            |
-| `match(...)`                | sets allowed values                                                                      | `option&`            |
-| `doc(doc)`                  | sets the option description                                                              | `option&`            |
-| `doc()`                     | gets the option description                                                              | `const std::string&` |
+| Member                               | Description                                                                              | Return value         |
+| ------------------------------------ | ---------------------------------------------------------------------------------------  | -------------------- |
+| `option(nm)`                         | constructs and sets the name reference                                                   |                      |
+| `option(nm, anm)`                    | constructs and sets the name and alt_name reference                                      |                      |
+| `~option()`                          | destructor                                                                               |                      |
+| `set(value_name, ref)`               | sets the variable to write to and the value name (e.g. file, charset)                    | `option&`            |
+| `set(value_name, ref, def)`          | sets the variable to write to with default value and the value name (e.g. file, charset) | `option&`            |
+| `req()`                              | sets the option to be required                                                           | `option&`            |
+| `match(...)` or `allow()`            | sets allowed values                                                                      | `option&`            |
+| `validate(doc, pred)` or `require()` | sets a function that validates the value                                                 | `option&`            |
+| `doc(doc)`                           | sets the option description                                                              | `option&`            |
+| `doc()`                              | gets the option description                                                              | `const std::string&` |
 
 <br>
 
