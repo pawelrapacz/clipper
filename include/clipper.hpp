@@ -849,26 +849,27 @@ namespace CLI
                 return true;
             }
 
-
+            bool err = false;
             while (not args.empty()) {
                 if (_names.contains(args.front())) {
                     if (_options[_names[args.front()]]->req())
                         req_count--;
 
-                    set_option(args);
+                    set_option(args); // it pops the option and its value
                 }
                 else {
-                    _wrong.emplace_back("Unkonown argument " + args.front());
-                    return false;
+                    _wrong.emplace_back("[" + args.front() + "] Unkonown argument");
+                    err = true;
+                    args.pop(); // necessary to properly continue
                 }
             }
 
             if (req_count) {
-                _wrong.emplace_back("Missing required argument");
-                return false;
+                _wrong.emplace_back("Missing required argument(s)");
+                err = true;
             }
 
-            return true;
+            return !err;
         }
 
 
@@ -885,16 +886,16 @@ namespace CLI
                 return;
             }
             else if (args.empty()) {
-                _wrong.emplace_back("Missing option value " + temp_option_name);
+                _wrong.emplace_back("[" + temp_option_name + "] Missing option value");
                 return;
             }
 
             try {
-                *opt = args.front().data();
+                opt->assign(args.front());
                 args.pop();
             }
             catch (...) {
-                _wrong.emplace_back("Value " + args.front() + " is not allowed " + temp_option_name);
+                _wrong.emplace_back("[" + temp_option_name + "] Value " + args.front() + " is not allowed \n\t{ " + opt->detailed_synopsis() + "  " + opt->doc() + " }");
                 return;
             }
         }

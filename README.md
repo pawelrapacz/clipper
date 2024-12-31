@@ -220,8 +220,18 @@ app 1.0.0
 
 
 > app -c
-Missing option value -c
-Missing required argument
+[-c] Missing option value
+Missing required argument(s)
+
+> app --input file.txt -c 17 -f -j --myvalue 0
+[-c] Value 17 is not allowed
+        { -c, --count (1 2 3 13 14)  Sets count }
+[17] Unkonown argument
+[-j] Unkonown argument
+[--myvalue] Value 0 is not allowed
+        { --myvalue <value>  My value (0; 1) }
+[0] Unkonown argument
+Missing required argument(s)
 
 >
 ```
