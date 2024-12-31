@@ -209,8 +209,7 @@ OPTIONS
         -i, --input <file>    Input file
         -c, --count (1 2 3 13 14)
                               Sets count
-        --myvalue, --myvalue <value>
-                              My value (0; 1)
+        --myvalue <value>     My value (0; 1)
         -l, --length <number> Output length >10
 
 LICENSE

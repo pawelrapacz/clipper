@@ -115,7 +115,7 @@ namespace CLI
          * \return Detailed option synopsis
          */
         std::string detailed_synopsis() const noexcept
-        { return (alt_name.empty() ? name : alt_name + ", " + name + " ") + value_info(); }
+        { return (name == alt_name ? "" : alt_name + ", ") + name + " " + value_info(); }
 
         /**
          * \brief Creates option value info.
@@ -797,10 +797,10 @@ namespace CLI
             // end SYNOPSIS
 
             if (not flags.view().empty())
-                help << "FLAGS\n" << flags.view();
+                help << "\nFLAGS\n" << flags.view();
 
             if (not options.view().empty())
-                help << "OPTIONS\n" << options.view();
+                help << "\nOPTIONS\n" << options.view();
 
             if (not _license_notice.empty())
                 help << "\nLICENSE\n\t" << _license_notice << "\n";
