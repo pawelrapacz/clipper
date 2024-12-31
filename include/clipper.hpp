@@ -43,7 +43,7 @@
 
 
 /**
- *  \brief Contains all the clipper utilities
+ *  \brief Contains all the clipper utilities.
  */
 namespace CLI
 {
@@ -51,8 +51,10 @@ namespace CLI
 
     class option_base;
 
+    /// \cond
     template<typename Tp>
     class option;
+    /// \endcond
 
 
     using option_name_map = std::unordered_map<std::string, std::size_t>; ///< Container for storing option names
@@ -60,9 +62,7 @@ namespace CLI
 
 
 
-    /**
-     *  \brief Allowed option types. (int, float, char, std::string)
-     */
+    /// \brief Allowed option types. (int, float, char, std::string)
     template<typename T>
     concept option_types = 
         std::negation_v<std::is_const<T>> &&
@@ -73,11 +73,9 @@ namespace CLI
         );
 
 
-    /**
-     *  \brief Character types
-     */
+    /// \brief Checks if a given type is a character type.
     template<typename T>
-    concept is_character = 
+    concept is_character_type = 
         std::is_same_v<T, char> ||
         std::is_same_v<T, wchar_t> ||
         std::is_same_v<T, char8_t> ||
@@ -90,16 +88,18 @@ namespace CLI
 
     /**
      *  \brief Allows casting option pointers.
-     *  \see option flag clipper
+     *  \see option< Tp > option< booL > clipper
      */
     class option_base {
         friend class clipper;
     protected:
+        /// \cond
+
         std::string _vname { "value" }; ///< Name of the type that the option holds.
         std::string _doc; ///< Documentation of the option
         bool _req { false }; ///< Stores information about optioin requirement
 
-        inline static uint32_t any_req { }; ///< Holds the number of required options.
+        inline static std::size_t any_req { }; ///< Holds the number of required options.
 
 
     protected:
@@ -120,7 +120,6 @@ namespace CLI
         /**
          * \brief Creates option value info.
          * \return Option value info (empty by default)
-         * 
          */
         virtual std::string value_info() const noexcept
         { return ""; };
@@ -129,20 +128,25 @@ namespace CLI
         virtual void assign(std::string_view) = 0; ///< Converts and assigns a value to an option.
         virtual void operator=(std::string_view) = 0; ///< Converts and assigns a value to an option.
         
+        /// \endcond
 
     public:
-        const std::string& name;
-        const std::string& alt_name;
+        const std::string& name; ///< Reference to name of the option.
+        const std::string& alt_name; ///< Reference to alternative name of the option.
 
 
     public:
+        /// \brief Constructs a new instance and sets its name reference.
+        /// \brief Name and alternative name are the same.
         option_base(const std::string& nm)
             : name(nm), alt_name(nm) {}
 
+        /// \brief Constructs a new instance and sets its name and alternative name reference.
         option_base(const std::string& nm, const std::string& anm)
             : name(nm), alt_name(anm) {}
 
-        virtual ~option_base() = default; ///< Virtual default constructor.
+        /// \brief Virtual default constructor.
+        virtual ~option_base() = default;
 
 
         /**
@@ -164,25 +168,31 @@ namespace CLI
 
     /**
      *  \brief  Contains option properties.
-     *  \see    option_types clipper
      *  \tparam Tp Option (option value) type.
+     *  \see    option_types clipper clipper::add_option()
+     *  \anchor opt
      */
     template<option_types Tp>
     class option<Tp> : public option_base {
         friend class clipper;
 
     public:
-        using predicate = bool (*)(const Tp&); ///< Type of function that checks weather the given value meets some requirements
+        /// \brief Type of function that checks whether the given value meets some requirements
+        /// \anchor optPredicate
+        using predicate = bool (*)(const Tp&);
         using option_base::doc;
 
-
+        /// \brief Constructs a new instance and sets its name reference.
+        /// \brief Name and alternative name are the same.
         option(const std::string& nm)
             : option_base(nm) {}
-            
+        
+        /// \brief Constructs a new instance and sets its name and alternative name reference.
         option(const std::string& nm, const std::string& anm)
             : option_base(nm, anm) {}
 
-        ~option() = default; ///< Default destructor.
+        /// \brief Default destructor.
+        ~option() = default;
 
 
         /**
@@ -249,7 +259,8 @@ namespace CLI
          *  \param  doc Description of the requirements of the given function, i.e. [0; 1], length < 10, lower case.
          *  \param  pred Function of type \ref predicate that checks whether the given value is valid (meets some requirements).
          *  \return Reference to itself.
-         *  \see predicate
+         *  \see predicate CLI::pred
+         *  \anchor optValidate
          */
         option& validate(std::string_view doc, predicate pred) {
             _match_func_doc = doc;
@@ -264,6 +275,7 @@ namespace CLI
          *  \param  pred Function of type \ref predicate that checks whether the given value is valid (meets some requirements).
          *  \return Reference to itself.
          *  \see predicate validate() CLI::pred
+         *  \anchor optRequire
          */
         option& require(std::string_view doc, predicate pred) {
             return validate(doc, pred);
@@ -322,6 +334,8 @@ namespace CLI
 
 
     protected:
+        /// \cond
+
         /**
          *  \brief Converts and assigns a value to an option.
          *  \param val Value to assign.
@@ -334,7 +348,7 @@ namespace CLI
                     throw std::logic_error("Value is not allowed");
 
 
-            } else if constexpr (is_character<Tp>) {
+            } else if constexpr (is_character_type<Tp>) {
 
                 if (validate(val.front()))
                     *_ptr = val.front();
@@ -389,7 +403,8 @@ namespace CLI
             else
                 return _match_func(val) && (_match_list.empty() || _match_list.contains(val));
         }
-    
+
+        /// \endcond
 
     private:
         Tp* _ptr = nullptr;         ///< Pointer where to write parsed value to.
@@ -400,8 +415,8 @@ namespace CLI
 
 
     /**
-     *  \brief  Contains flag properties.
-     *  \see    clipper clipper::add_flag()
+     *  \brief Contains flag properties (no argument option - boolean).
+     *  \see   clipper clipper::add_flag() clipper::add_option()
      */
     template<>
     class option<bool> : public option_base {
@@ -410,19 +425,22 @@ namespace CLI
     public:
         using option_base::doc;
 
-
+        /// \brief Constructs a new instance and sets its name reference.
+        /// \brief Name and alternative name are the same.
         option(const std::string& nm)
             : option_base(nm) {}
-            
+        
+        /// \brief Constructs a new instance and sets its name and alternative name reference.
         option(const std::string& nm, const std::string& anm)
             : option_base(nm, anm) {}
 
-        ~option() = default;  ///< Default destructor.
+        /// \brief Default destructor.
+        ~option() = default; 
 
 
         /**
          *  \brief  Sets the variable to write to.
-         *  \param[out] ref Variable to write the flag value (state) to.
+         *  \param[out] ref Variable to write the \ref option< bool > "flag (option<bool>)" value (state) to.
          *  \return Reference to itself.
          */
         option& set(bool& ref) {
@@ -433,8 +451,8 @@ namespace CLI
 
 
         /**
-         *  \brief  Sets the flag description.
-         *  \param  doc Flag information (documentation).
+         *  \brief  Sets the \ref option< bool > "flag (option<bool>)" description.
+         *  \param  doc \ref option< bool > "Flag (option<bool>)" information (documentation).
          *  \return Reference to itself.
          */
         option& doc(std::string_view doc) {
@@ -444,7 +462,7 @@ namespace CLI
 
 
         /**
-         *  \brief  Sets the flag to be required.
+         *  \brief  Sets the \ref option< bool > "flag (option<bool>)" to be required.
          *  \return Reference to itself.
          */
         option& req() {
@@ -455,6 +473,8 @@ namespace CLI
 
 
     protected:
+        /// \cond
+
         /**
          *  \brief Converts and assigns a value to an option.
          *  \param val Value to assign.
@@ -474,12 +494,13 @@ namespace CLI
 
 
         /**
-         *  \brief Assigns a value to an flag.
+         *  \brief Assigns a value to an \ref option< bool > "flag (option<bool>)".
          */
         inline void operator=(bool val) {
             *_ptr = val;
         }
 
+        /// \endcond
 
     private:
         bool* _ptr = nullptr; ///< Pointer where to write parsed value (state) to.
@@ -496,30 +517,27 @@ namespace CLI
      * 
      * Basically everything you need.
      * 
-     *  \see flag option option_types
-     *  \ref index
+     *  \see \ref index "Main Page" option<bool> option< Tp > option_types
      */
     class clipper {
     public:
         const std::vector<std::string>& wrong = _wrong; ///< Contains all errors encountered while parsing.
 
     public:
-        clipper() = default; ///< Default constructor.
+        /// \brief Default constructor.
+        clipper() = default;
 
-        /**
-         *  \brief Constructs a clipper instance and sets the app name.
-         */
+        /// \brief Constructs a clipper instance and sets the app name.
         clipper(std::string_view app_name)
             : _app_name(app_name) {}
 
-        /**
-         *  \brief Constructs a clipper instance and sets the app name and other information.
-         */
+        /// \brief Constructs a clipper instance and sets the app name and other information.
         clipper(std::string_view app_name, std::string_view version, std::string_view author, std::string_view license_notice)
             : _app_name(app_name), _version(version), _author(author), _license_notice(license_notice) {}
 
 
-        ~clipper() = default; ///< Default destructor.
+        /// \brief Default destructor.
+        ~clipper() = default;
 
 
         /**
@@ -633,7 +651,7 @@ namespace CLI
 
         /**
          *  \brief  Adds an option of a given type.
-         *  \see    option_types option
+         *  \see    option_types option< Tp >
          *  \tparam Tp Option (option value) type.
          *  \param  name Option name.
          *  \return Reference to the created option.
@@ -649,7 +667,7 @@ namespace CLI
 
         /**
          *  \brief  Adds an option of a given type.
-         *  \see    option_types option
+         *  \see    option_types option< Tp >
          *  \tparam Tp Option (option value) type.
          *  \param  name Primary option name.
          *  \param  alt_name Secondary option name.
@@ -670,11 +688,12 @@ namespace CLI
 
 
         /**
-         *  \brief  Adds a flag.
+         *  \brief  Adds a \ref option< bool > "flag (option<bool>)".
          * 
-         *  This function is same as \ref add_option() "add_option<bool>()".
+         *  This function adds new \ref option< bool > "flag (option<bool>)".
+         *  Internally it just calls \ref add_option() "add_option<bool>(...)".
          * 
-         *  \see    flag
+         *  \see    option< bool >
          *  \param  name Flag name.
          *  \return Reference to the created flag.
          */
@@ -684,11 +703,12 @@ namespace CLI
 
 
         /**
-         *  \brief  Adds a flag.
+         *  \brief  Adds a \ref option< bool > "flag (option<bool>)".
          * 
-         *  This function is same as \ref add_option() "add_option<bool>()".
+         *  This function adds new \ref option< bool > "flag (option<bool>)".
+         *  Internally it just calls \ref add_option() "add_option<bool>(...)".
          * 
-         *  \see    flag
+         *  \see    option< bool >
          *  \param  name Primary flag name.
          *  \param  alt_name Secondary flag name.
          *  \return Reference to the created flag.
@@ -729,7 +749,7 @@ namespace CLI
 
 
         /**
-         *  \brief  Creates a documentation (man page, help) of the application.
+         *  \brief  Creates a documentation (man page, help) for the application.
          *  \return Documentation.
          */
         inline std::string make_help() const noexcept {
@@ -796,7 +816,7 @@ namespace CLI
 
 
         /**
-         *  \brief  Creates a version notice of the application.
+         *  \brief  Creates a version notice for the application.
          *  \return Version notice.
          */
         inline std::string make_version_info() const noexcept {
@@ -813,7 +833,7 @@ namespace CLI
          *  \param argv Arguments.
          */
         bool parse(int argc, char* argv[]) {
-            uint32_t req_count = option_base::any_req;
+            auto req_count = option_base::any_req;
             std::queue<std::string> args;
             for (int i = 1; i < argc; i++) // argv[0] is the command name, it is meant to be omitted
                 args.push(argv[i]);
@@ -854,9 +874,7 @@ namespace CLI
 
 
     private:
-        /**
-         *  \brief Parses value of an option/flag and catches errors.
-         */
+        /// \brief Parses value of an option/flag and catches errors.
         inline void set_option(std::queue<std::string>& args) {
             auto& opt = _options[_names[args.front()]];
             std::string temp_option_name = std::move(args.front());
@@ -892,21 +910,32 @@ namespace CLI
         std::string _web_link;
 
 
+        /// \brief Contains a \ref option<bool> "flag" information.
+        /// \brief Primarly for version and help flags.
         struct {
-            std::string name;
-            std::string alt_name;
-            option<bool> hndl {name, alt_name};
+            std::string name; ///< Name of the flag.
+            std::string alt_name; ///< Alternative name of the flag.
+            option<bool> hndl {name, alt_name}; ///< \ref option<bool> "Flag" handle.
 
+            /**
+             *  \brief Compares string with name and alt_name.
+             *  \param str String to compare to
+             *  \return True if the given string is equal to name or alt_name, false otherwise.
+             */
             bool operator==(const std::string& str) const noexcept
             { return name == str or alt_name == str; }
 
+            /**
+             * \brief Checks whether the option is set (name is not empty).
+             * \return True if opiton is set, flase otherwise.
+             */
             bool is_set() const noexcept
             { return not name.empty(); }
 
         } _help_flag, _version_flag;
 
-        option_name_map _names;
-        option_vec _options;
+        option_name_map _names; ///< Contains option names.
+        option_vec _options; ///< Contains all options.
         std::vector<std::string> _wrong; ///< Contains all errors encountered while parsing.
     };
 
@@ -916,13 +945,16 @@ namespace CLI
 
 
 /**
- * \brief Namespace that contains template predicates for \ref option "options".
- * \see option option::predicate option::validate()
+ * \brief Namespace that contains template predicates for \ref opt "options".
+ * \see numeric 
+ *      \ref opt "option"
+ *      \ref optPredicate "option::predicate"
+ *      \ref optValidate "option::validate()"
  */
 namespace CLI::pred {
     /**
      * \brief Allowed predicate types.
-     * \see option option::predicate
+     * \see \ref opt "option"
      */
     template<typename Tp>
     concept numeric =
@@ -934,10 +966,13 @@ namespace CLI::pred {
 
     /**
      * \brief Predicate that checks whether a value is between bounds (excludes the bounds).
-     * \brief V1 and V2 have to be of the same type that is \ref numeric.
+     * \brief V1 and V2 must be of the same type that is also \ref numeric.
      * \tparam V1 First (smaller) bound (compile-time constant of same type as V2).
      * \tparam V2 Second (greater) bound (compile-time constant of same type as V1).
-     * \see pred::numeric option option::predicate option::validate()
+     * \see numeric 
+     *      \ref opt "option"
+     *      \ref optPredicate "option::predicate"
+     *      \ref optValidate "option::validate()"
      */
     template<auto V1, auto V2>
         requires numeric<decltype(V1)> && std::is_same_v<decltype(V1), decltype(V2)>
@@ -949,9 +984,13 @@ namespace CLI::pred {
 
     /**
      * \brief Predicate that checks whether a value is between bounds (includes the bounds).
+     * \brief V1 and V2 must be of the same type that is also \ref numeric.
      * \tparam V1 First (smaller) bound (compile-time constant of same type as V2).
      * \tparam V2 Second (greater) bound (compile-time constant of same type as V1).
-     * \see pred::numeric option option::predicate option::validate()
+     * \see numeric 
+     *      \ref opt "option"
+     *      \ref optPredicate "option::predicate"
+     *      \ref optValidate "option::validate()"
      */
     template<auto V1, auto V2>
         requires numeric<decltype(V1)> && std::is_same_v<decltype(V1), decltype(V2)>
@@ -963,32 +1002,44 @@ namespace CLI::pred {
 
     /**
      * \brief Predicate that checks whether a value is greater than a number (excludes the number).
+     * \brief Type of V must be \ref numeric.
      * \tparam V number that the given value will be compared to.
-     * \see option option::predicate option::validate()
+     * \see numeric 
+     *      \ref opt "option"
+     *      \ref optPredicate "option::predicate"
+     *      \ref optValidate "option::validate()"
      */
     template<auto V>
         requires numeric<decltype(V)>
-    bool grater_than(const decltype(V)& val) {
+    bool greater_than(const decltype(V)& val) {
         return V < val;
     }
 
 
     /**
      * \brief Predicate that checks whether a value is greater than a number (includes the number).
+     * \brief Type of V must be \ref numeric.
      * \tparam V number that the given value will be compared to.
-     * \see option option::predicate option::validate()
+     * \see numeric 
+     *      \ref opt "option"
+     *      \ref optPredicate "option::predicate"
+     *      \ref optValidate "option::validate()"
      */
     template<auto V>
         requires numeric<decltype(V)>
-    bool igrater_than(const decltype(V)& val) {
+    bool igreater_than(const decltype(V)& val) {
         return V <= val;
     }
 
 
     /**
      * \brief Predicate that checks whether a value is less than a number (excludes the number).
+     * \brief Type of V must be \ref numeric.
      * \tparam V number that the given value will be compared to.
-     * \see option option::predicate option::validate()
+     * \see numeric 
+     *      \ref opt "option"
+     *      \ref optPredicate "option::predicate"
+     *      \ref optValidate "option::validate()"
      */
     template<auto V>
         requires numeric<decltype(V)>
@@ -999,8 +1050,12 @@ namespace CLI::pred {
 
     /**
      * \brief Predicate that checks whether a value is less than a number (includes the number).
+     * \brief Type of V must be \ref numeric.
      * \tparam V number that the given value will be compared to.
-     * \see option option::predicate option::validate()
+     * \see numeric 
+     *      \ref opt "option"
+     *      \ref optPredicate "option::predicate"
+     *      \ref optValidate "option::validate()"
      */
     template<auto V>
         requires numeric<decltype(V)>
