@@ -1,6 +1,6 @@
 <h1 align="center">
   <br>
-  clipper
+  <a href="https://github.com/pawelrapacz/clipper" title="GitHub repo" style="color: white; text-decoration: none;">clipper</a>
   <br><br>
   <a href="https://github.com/pawelrapacz/clipper/releases/latest" title="Latest release"><img src="https://img.shields.io/github/v/release/pawelrapacz/clipper" alt="GitHub Release"></a>
   <a href="https://github.com/pawelrapacz/clipper/blob/master/LICENSE" title="License"><img src="https://img.shields.io/github/license/pawelrapacz/clipper" alt="GitHub License"></a>

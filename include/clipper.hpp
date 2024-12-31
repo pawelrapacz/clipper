@@ -11,9 +11,9 @@
 
 /**
  *  \file       clipper.hpp
- *  \brief      Clipper is a simple, header-only library that handles commad line arguments and parsing.
+ *  \brief      clipper is a simple, header-only library that handles commad line arguments and parsing.
  *  \author     Paweł Rapacz
- *  \version    1.1.0
+ *  \version    1.1.1
  *  \date       2024
  *  \copyright  MIT License
  */
@@ -719,11 +719,15 @@ namespace CLI
 
 
         /**
-         *  \brief  Sets/activates the help flag.
-         *  \see    flag
+         *  \brief  Sets/activates the help/version \ref option< bool > "flag (option<bool>)".
+         * 
+         *  Help/Version flag is not a standard flag, it has to be used independently.
+         *  When used with other options is treated as an unknown option.
+         * 
+         *  \see    option< bool >
          *  \param  name Primary flag name.
          *  \param  alt_name Secondary flag name. (optional)
-         *  \return Help flag reference.
+         *  \return Help/Version flag reference.
          */
         option<bool>& help_flag(std::string_view name, std::string_view alt_name = "") {
             _help_flag.name = name;
@@ -733,13 +737,7 @@ namespace CLI
         }
 
 
-        /**
-         *  \brief  Sets/activates the version flag.
-         *  \see    flag
-         *  \param  name Primary flag name.
-         *  \param  alt_name Secondary flag name. (optional)
-         *  \return Help flag reference.
-         */
+        /// \copydoc help_flag
         option<bool>& version_flag(std::string_view name, std::string_view alt_name = "") {
             _version_flag.name = name;
             _version_flag.alt_name = alt_name;
