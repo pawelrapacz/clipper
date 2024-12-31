@@ -263,7 +263,7 @@ namespace CLI
          *  \anchor optValidate
          */
         option& validate(std::string_view doc, predicate pred) {
-            _match_func_doc = doc;
+            _doc.append(" ").append(doc);
             _match_func = pred;
             return *this;
         }
@@ -408,7 +408,7 @@ namespace CLI
 
     private:
         Tp* _ptr = nullptr;         ///< Pointer where to write parsed value to.
-        std::string _match_func_doc; ///< Documentation of the requirements of a \ref predicate function i.e. [0; 1], length < 10, lower case
+        // std::string _match_func_doc; ///< Documentation of the requirements of a \ref predicate function i.e. [0; 1], length < 10, lower case
         predicate _match_func = nullptr; ///< Function that checks wheather the value is allowed.
         std::set<Tp> _match_list;   ///< Contains allowed values (if empty all viable values are allowed).
     };
