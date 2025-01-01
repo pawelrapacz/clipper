@@ -176,7 +176,7 @@ int main(int argc, char** argv) {
         .req()
         .require(">10", CLI::pred::greater_than<10uz>);
 
-    if (not cli.parse(argc, argv) or not cli.wrong.empty()) {
+    if (not cli.parse(argc, argv)) {
         for (auto& i: cli.wrong)
             std::cout << i << "\n";
         return 1;
