@@ -13,7 +13,7 @@
  *  \file       clipper.hpp
  *  \brief      clipper is a simple, header-only library that handles commad line arguments and parsing.
  *  \author     Paweł Rapacz
- *  \version    1.1.1
+ *  \version    1.1.2
  *  \date       2024
  *  \copyright  MIT License
  */
@@ -829,6 +829,7 @@ namespace CLI
          *  \brief Parses the command line input.
          *  \param argc Argument count.
          *  \param argv Arguments.
+         *  \return True if arguments were parsed successfully, false otherwise.
          */
         bool parse(int argc, char* argv[]) {
             auto req_count = option_base::any_req;
@@ -853,7 +854,7 @@ namespace CLI
                     if (_options[_names[args.front()]]->req())
                         req_count--;
 
-                    set_option(args); // it pops the option and its value
+                    set_option(args, err); // it pops the option and its value
                 }
                 else {
                     _wrong.emplace_back("[" + args.front() + "] Unkonown argument");
@@ -863,7 +864,7 @@ namespace CLI
             }
 
             if (req_count) {
-                _wrong.emplace_back("Missing required argument(s)");
+                _wrong.emplace_back("Missing required argument(s) " + std::to_string(req_count));
                 err = true;
             }
 
@@ -874,27 +875,25 @@ namespace CLI
 
     private:
         /// \brief Parses value of an option/flag and catches errors.
-        inline void set_option(std::queue<std::string>& args) {
+        inline void set_option(std::queue<std::string>& args, bool& error) {
             auto& opt = _options[_names[args.front()]];
             std::string temp_option_name = std::move(args.front());
             args.pop();
 
             if ( auto optFlag = dynamic_cast<option<bool>*>(opt.get()) ) {
                 *optFlag = true;
-                return;
             }
             else if (args.empty()) {
                 _wrong.emplace_back("[" + temp_option_name + "] Missing option value");
-                return;
+                error = true;
             }
-
-            try {
-                opt->assign(args.front());
+            else {
+                try { opt->assign(args.front()); }
+                catch (...) {
+                    _wrong.emplace_back("[" + temp_option_name + "] Value " + args.front() + " is not allowed \n\t{ " + opt->detailed_synopsis() + "  " + opt->doc() + " }");
+                    error = true;
+                }
                 args.pop();
-            }
-            catch (...) {
-                _wrong.emplace_back("[" + temp_option_name + "] Value " + args.front() + " is not allowed \n\t{ " + opt->detailed_synopsis() + "  " + opt->doc() + " }");
-                return;
             }
         }
 
