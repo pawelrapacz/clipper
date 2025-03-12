@@ -648,7 +648,6 @@ namespace CLI
         }
 
 
-
         /**
          *  \brief  Adds an option of a given type.
          *  \see    option_types option< Tp >
@@ -826,12 +825,43 @@ namespace CLI
 
 
         /**
+         *  \brief Allows the app to be used without any arguments.
+         * 
+         *  This function allows for using the app without any arguments (even the ones marked as required).
+         *  When this function is used, there will be no parsing errors when no arguments are given.
+         *  
+         *  \see no_args() parse()
+         */
+        inline void allow_no_args() {
+            _allow_no_args = true;
+        }
+
+
+        /**
+         *  \brief Checks if no arguments were given.
+         *  \see allow_no_args() parse()
+         *  \return True if no arguments were given (always true before parsing), false if any arguments were given.
+         */
+        inline bool no_args() const {
+            return _args_count == 1;
+        }
+
+
+
+        /**
          *  \brief Parses the command line input.
          *  \param argc Argument count.
          *  \param argv Arguments.
          *  \return True if arguments were parsed successfully, false otherwise.
          */
         bool parse(int argc, char* argv[]) {
+            _args_count = argc;
+            bool err = false;
+        
+
+            if (_allow_no_args && argc == 0)
+                return !err;
+
             auto req_count = option_base::any_req;
             std::queue<std::string> args;
             for (int i = 1; i < argc; i++) // argv[0] is the command name, it is meant to be omitted
@@ -848,7 +878,6 @@ namespace CLI
                 return true;
             }
 
-            bool err = false;
             while (not args.empty()) {
                 if (_names.contains(args.front())) {
                     if (_options[_names[args.front()]]->req())
@@ -932,6 +961,9 @@ namespace CLI
 
         } _help_flag, _version_flag;
 
+
+        int _args_count { }; ///< Contains the argument count.
+        bool _allow_no_args { false }; ///< Determines whether the app can be used without giving any arguments. \ref allow_no_args() "See more"
         option_name_map _names; ///< Contains option names.
         option_vec _options; ///< Contains all options.
         std::vector<std::string> _wrong; ///< Contains all errors encountered while parsing.

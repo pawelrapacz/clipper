@@ -271,6 +271,8 @@ the application, options and flags.
 | `version_flag(name, alt_name = "")`                  | sets the help flag name/name                                   | `option<bool>&`                                  |
 | `make_help()`                                        | returns help page                                              | `std::string`                                    |
 | `make_version_info()`                                | returns version information                                    | `std::string`                                    |
+| `allow_no_args()`                                    | allows the app to be used without any arguments                | `void`                                           |
+| `no_args()`                                          | checks if no arguments were given                              | `bool`                                           |
 | `parse(argc, argv)`                                  | parses command line arguments                                  | `bool` (`true` if successful, `false` otherwise) |
 | `wrong`                                              | `const std::vector<std::string>&` that contains parsing errors |                                                  |
 
