@@ -859,7 +859,7 @@ namespace CLI
             bool err = false;
         
 
-            if (_allow_no_args && argc == 0)
+            if (_allow_no_args && argc == 1)
                 return !err;
 
             auto req_count = option_base::any_req;
