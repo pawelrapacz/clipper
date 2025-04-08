@@ -1016,7 +1016,7 @@ namespace CLI::pred {
      */
     template<auto V1, auto V2>
         requires numeric<decltype(V1)> && std::is_same_v<decltype(V1), decltype(V2)>
-    bool between(const decltype(V1)& val) {
+    inline bool between(const decltype(V1)& val) {
         static_assert(V1 < V2, "V1 must be less than V2."); 
         return V1 < val && val < V2;
     }
@@ -1034,7 +1034,7 @@ namespace CLI::pred {
      */
     template<auto V1, auto V2>
         requires numeric<decltype(V1)> && std::is_same_v<decltype(V1), decltype(V2)>
-    bool ibetween(const decltype(V1)& val) {
+    inline bool ibetween(const decltype(V1)& val) {
         static_assert(V1 < V2, "V1 must be less than V2.");
         return V1 <= val && val <= V2;
     }
@@ -1051,7 +1051,7 @@ namespace CLI::pred {
      */
     template<auto V>
         requires numeric<decltype(V)>
-    bool greater_than(const decltype(V)& val) {
+    inline bool greater_than(const decltype(V)& val) {
         return V < val;
     }
 
@@ -1067,7 +1067,7 @@ namespace CLI::pred {
      */
     template<auto V>
         requires numeric<decltype(V)>
-    bool igreater_than(const decltype(V)& val) {
+    inline bool igreater_than(const decltype(V)& val) {
         return V <= val;
     }
 
@@ -1083,7 +1083,7 @@ namespace CLI::pred {
      */
     template<auto V>
         requires numeric<decltype(V)>
-    bool less_than(const decltype(V)& val) {
+    inline bool less_than(const decltype(V)& val) {
         return V > val;
     }
 
@@ -1099,7 +1099,7 @@ namespace CLI::pred {
      */
     template<auto V>
         requires numeric<decltype(V)>
-    bool iless_than(const decltype(V)& val) {
+    inline bool iless_than(const decltype(V)& val) {
         return V >= val;
     }
 
