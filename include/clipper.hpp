@@ -854,7 +854,7 @@ namespace CLI
          *  \param argv Arguments.
          *  \return True if arguments were parsed successfully, false otherwise.
          */
-        bool parse(int argc, char* argv[]) {
+        bool parse(int argc, const char* const* const argv) { /* <-- beautiful */
             _args_count = argc;
             bool err = false;
         
