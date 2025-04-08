@@ -58,7 +58,7 @@ namespace CLI
     /// \endcond
 
 
-    using option_name_map = std::unordered_map<std::string, std::size_t>; ///< Container for storing option names
+    using option_name_map = std::unordered_map<std::string_view, std::size_t>; ///< Container for storing option names
     using option_vec = std::vector<std::unique_ptr<option_base>>; ///< Container for storing options
 
 
@@ -103,7 +103,7 @@ namespace CLI
     protected:
         /// \cond
 
-        std::string _vname { "value" }; ///< Name of the type that the option holds.
+        std::string_view _vname { "value" }; ///< Name of the type that the option holds.
         std::string _doc; ///< Documentation of the option
         bool _req { false }; ///< Stores information about optioin requirement
 
@@ -116,14 +116,14 @@ namespace CLI
          * \return Option synopsis
          */
         std::string synopsis() const noexcept
-        { return alt_name + " " + value_info(); }
+        { return std::string(alt_name) + " " + value_info(); }
         
         /**
          * \brief Creates detailed option synopsis in format: [alt_name], name [value_info].
          * \return Detailed option synopsis
          */
         std::string detailed_synopsis() const noexcept
-        { return (name == alt_name ? "" : alt_name + ", ") + name + " " + value_info(); }
+        { return (alt_name.empty() ? std::string() : std::string(alt_name) + ", ") + std::string(name) + " " + value_info(); }
 
         /**
          * \brief Creates option value info.
@@ -139,18 +139,18 @@ namespace CLI
         /// \endcond
 
     public:
-        const std::string& name; ///< Reference to name of the option.
-        const std::string& alt_name; ///< Reference to alternative name of the option.
+        std::string_view name; ///< Reference to name of the option.
+        std::string_view alt_name; ///< Reference to alternative name of the option.
 
 
     public:
         /// \brief Constructs a new instance and sets its name reference.
         /// \brief Name and alternative name are the same.
-        option_base(const std::string& nm)
-            : name(nm), alt_name(nm) {}
+        option_base(std::string_view nm)
+            : name(nm) {}
 
         /// \brief Constructs a new instance and sets its name and alternative name reference.
-        option_base(const std::string& nm, const std::string& anm)
+        option_base(std::string_view nm, std::string_view anm)
             : name(nm), alt_name(anm) {}
 
         /// \brief Virtual default constructor.
@@ -192,11 +192,11 @@ namespace CLI
 
         /// \brief Constructs a new instance and sets its name reference.
         /// \brief Name and alternative name are the same.
-        option(const std::string& nm)
+        option(std::string_view nm)
             : option_base(nm) {}
         
         /// \brief Constructs a new instance and sets its name and alternative name reference.
-        option(const std::string& nm, const std::string& anm)
+        option(std::string_view nm, std::string_view anm)
             : option_base(nm, anm) {}
 
         /// \brief Default destructor.
@@ -317,7 +317,7 @@ namespace CLI
          */
         std::string value_info() const noexcept override {
             if (_match_list.empty()) {
-                return "<" + _vname + ">";
+                return "<" + std::string(_vname) + ">";
             }
             else {
                 std::string list;
@@ -439,11 +439,11 @@ namespace CLI
 
         /// \brief Constructs a new instance and sets its name reference.
         /// \brief Name and alternative name are the same.
-        option(const std::string& nm)
+        option(std::string_view nm)
             : option_base(nm) {}
         
         /// \brief Constructs a new instance and sets its name and alternative name reference.
-        option(const std::string& nm, const std::string& anm)
+        option(std::string_view nm, std::string_view anm)
             : option_base(nm, anm) {}
 
         /// \brief Default destructor.
@@ -565,7 +565,7 @@ namespace CLI
          *  \brief  Gets the (application) name.
          *  \return Application name.
          */
-        const std::string& name() const noexcept {
+        std::string_view name() const noexcept {
             return _app_name;
         }
 
@@ -583,7 +583,7 @@ namespace CLI
          *  \brief 	Gets the description.
          *  \return Description reference.
          */
-        const std::string& description() const noexcept {
+        std::string_view description() const noexcept {
             return _app_description;
         }
 
@@ -601,7 +601,7 @@ namespace CLI
          *  \brief  Gets the version.
          *  \return Version reference.
          */
-        const std::string& version() const noexcept {
+        std::string_view version() const noexcept {
             return _version;
         }
 
@@ -619,7 +619,7 @@ namespace CLI
          *  \brief  Gets the author.
          *  \return Author reference.
          */
-        const std::string& author() const noexcept {
+        std::string_view author() const noexcept {
             return _author;
         }
 
@@ -637,7 +637,7 @@ namespace CLI
          *  \brief 	Gets the license notice.
          *  \return License notice reference.
          */
-        const std::string& license() const noexcept {
+        std::string_view license() const noexcept {
             return _license_notice;
         }
 
@@ -655,7 +655,7 @@ namespace CLI
          *  \brief  Gets the web link.
          *  \return Web link reference.
          */
-        const std::string& web_link() const noexcept {
+        std::string_view web_link() const noexcept {
             return _web_link;
         }
 
@@ -670,8 +670,8 @@ namespace CLI
         template<typename Tp>
             requires std::is_same_v<Tp, bool> || option_types<Tp>
         option<Tp>& add_option(std::string_view name) {
-            _names[name.data()] = _options.size();
-            _options.emplace_back(std::make_unique<option<Tp>>(_names.find(name.data())->first));
+            _names[name] = _options.size();
+            _options.emplace_back(std::make_unique<option<Tp>>(name));
             return *static_cast<option<Tp>*>(_options.back().get());
         }
 
@@ -687,12 +687,10 @@ namespace CLI
         template<typename Tp>
             requires std::is_same_v<Tp, bool> || option_types<Tp>
         option<Tp>& add_option(std::string_view name, std::string_view alt_name) {
-            _names[name.data()] = _options.size();
-            _names[alt_name.data()] = _options.size();
+            _names[name] = _options.size();
+            _names[alt_name] = _options.size();
 
-            auto& nameref = _names.find(name.data())->first;
-            auto& alt_nameref = _names.find(alt_name.data())->first;
-            _options.emplace_back(std::make_unique<option<Tp>>(nameref, alt_nameref));
+            _options.emplace_back(std::make_unique<option<Tp>>(name, alt_name));
 
             return *static_cast<option<Tp>*>(_options.back().get());
         }
@@ -830,9 +828,9 @@ namespace CLI
          */
         inline std::string make_version_info() const noexcept {
             return
-                _app_name + " " + 
-                _version + "\n" + 
-                _author + "\n";
+                std::string(_app_name).append(" ")
+                .append(_version).append("\n")
+                .append(_author).append("\n");
         }
 
 
@@ -875,7 +873,7 @@ namespace CLI
                 return !err;
 
             auto req_count = option_base::any_req;
-            std::queue<std::string> args;
+            std::queue<std::string_view> args;
             for (int i = 1; i < argc; i++) // argv[0] is the command name, it is meant to be omitted
                 args.push(argv[i]);
 
@@ -898,7 +896,7 @@ namespace CLI
                     set_option(args, err); // it pops the option and its value
                 }
                 else {
-                    _wrong.emplace_back("[" + args.front() + "] Unkonown argument");
+                    _wrong.emplace_back("[" + std::string(args.front()) + "] Unkonown argument");
                     err = true;
                     args.pop(); // necessary to properly continue
                 }
@@ -916,22 +914,22 @@ namespace CLI
 
     private:
         /// \brief Parses value of an option/flag and catches errors.
-        inline void set_option(std::queue<std::string>& args, bool& error) {
+        inline void set_option(std::queue<std::string_view>& args, bool& error) {
             auto& opt = _options[_names[args.front()]];
-            std::string temp_option_name = std::move(args.front());
+            std::string_view temp_option_name = args.front();
             args.pop();
 
             if ( auto optFlag = dynamic_cast<option<bool>*>(opt.get()) ) {
                 *optFlag = true;
             }
             else if (args.empty()) {
-                _wrong.emplace_back("[" + temp_option_name + "] Missing option value");
+                _wrong.emplace_back("[" + std::string(temp_option_name) + "] Missing option value");
                 error = true;
             }
             else {
                 try { opt->assign(args.front()); }
                 catch (...) {
-                    _wrong.emplace_back("[" + temp_option_name + "] Value " + args.front() + " is not allowed \n\t{ " + opt->detailed_synopsis() + "  " + opt->doc() + " }");
+                    _wrong.emplace_back("[" + std::string(temp_option_name) + "] Value " + std::string(args.front()) + " is not allowed \n\t{ " + opt->detailed_synopsis() + "  " + opt->doc() + " }");
                     error = true;
                 }
                 args.pop();
@@ -941,19 +939,19 @@ namespace CLI
 
 
     private:
-        std::string _app_name;
-        std::string _app_description;
-        std::string _version;
-        std::string _author;
-        std::string _license_notice;
-        std::string _web_link;
+        std::string_view _app_name;
+        std::string_view _app_description;
+        std::string_view _version;
+        std::string_view _author;
+        std::string_view _license_notice;
+        std::string_view _web_link;
 
 
         /// \brief Contains a \ref option<bool> "flag" information.
         /// \brief Primarly for version and help flags.
         struct {
-            std::string name; ///< Name of the flag.
-            std::string alt_name; ///< Alternative name of the flag.
+            std::string_view name; ///< Name of the flag.
+            std::string_view alt_name; ///< Alternative name of the flag.
             option<bool> hndl {name, alt_name}; ///< \ref option<bool> "Flag" handle.
 
             /**
@@ -961,7 +959,7 @@ namespace CLI
              *  \param str String to compare to
              *  \return True if the given string is equal to name or alt_name, false otherwise.
              */
-            bool operator==(const std::string& str) const noexcept
+            bool operator==(std::string_view str) const noexcept
             { return name == str or alt_name == str; }
 
             /**
