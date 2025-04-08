@@ -32,6 +32,7 @@
 #include <charconv>
 #include <sstream>
 #include <iomanip>
+#include <filesystem>
 
 
 
@@ -69,8 +70,15 @@ namespace CLI
         std::negation_v<std::is_same<T, bool>> && (
             std::is_integral_v<T>       ||
             std::is_floating_point_v<T> ||
-            std::is_same_v<T, std::string>
+            std::is_same_v<T, std::string> ||
+            std::is_same_v<T, std::filesystem::path>
         );
+
+    
+    template<typename T>
+    concept is_string_type = 
+        std::is_same_v<T, std::string> ||
+        std::is_same_v<T,std::filesystem::path>;
 
 
     /// \brief Checks if a given type is a character type.
@@ -204,7 +212,7 @@ namespace CLI
         option& set(std::string_view value_name, Tp& ref) {
             _vname = value_name;
             _ptr = &ref;
-            *_ptr = { };
+            *_ptr = Tp();
             return *this;
         }
 
@@ -318,6 +326,10 @@ namespace CLI
                     for (Tp i : _match_list)
                         list.append(i).push_back(' ');
                 }
+                else if constexpr (std::is_same_v<Tp, std::filesystem::path>) {
+                    for (Tp i : _match_list)
+                        list.append(i.string()).push_back(' ');
+                }
                 else if constexpr (std::is_same_v<Tp, char>) {
                     for (Tp i : _match_list)
                         list.append(1, i).push_back(' ');
@@ -341,7 +353,7 @@ namespace CLI
          *  \param val Value to assign.
          */
         inline void assign(std::string_view val) override {
-            if constexpr (std::is_same_v<Tp, std::string>) {
+            if constexpr (is_string_type<Tp>) {
 
                 *_ptr = val;
                 if (!validate(*_ptr))
