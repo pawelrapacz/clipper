@@ -761,7 +761,7 @@ namespace CLI
          */
         inline std::string make_help() const noexcept {
             auto add_help = [](const option_base* const opt, std::ostringstream& stream) {
-                auto snps = std::move(opt->detailed_synopsis());
+                auto snps = opt->detailed_synopsis();
 
                 if (CLIPPER_HELP_ARG_FIELD_WIDTH <= snps.length()) {
                     stream << '\t' << snps << "\n\t" << std::string(CLIPPER_HELP_ARG_FIELD_WIDTH, ' ') << opt->doc() << '\n';
