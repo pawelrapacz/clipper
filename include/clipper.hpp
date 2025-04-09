@@ -79,14 +79,13 @@ namespace CLI
         is_basic_string_v<T> ||
         std::is_same_v<T,std::filesystem::path>;
 
-    /// \brief Allowed option types. (int, float, char, std::string)
+    /// \brief Allowed option types.
     template<typename T>
     concept option_types = 
         std::negation_v<std::is_const<T>> && (
             std::is_integral_v<T>       ||
             std::is_floating_point_v<T> ||
-            std::is_same_v<T, std::string> ||
-            std::is_same_v<T, std::filesystem::path>
+            is_string<T>
         );
 
 
@@ -118,7 +117,7 @@ namespace CLI
 
         /// \cond
 
-        string_view_type _vname { "value" }; ///< Name of the type that the option holds.
+        string_view_type _vname; ///< Name of the type that the option holds.
         string_type _doc; ///< Documentation of the option
         bool _req { false }; ///< Stores information about optioin requirement
 
