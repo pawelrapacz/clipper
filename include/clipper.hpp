@@ -48,42 +48,22 @@
  */
 namespace CLI
 {
-    class clipper;
+    /// \brief Checks whether a type is std::basic_string.
+    template<typename>
+    struct is_basic_string : public std::false_type { };
 
-    class option_base;
+    /// \brief Checks whether a type is std::basic_string.
+    template<typename CharT, typename Traits, typename Alloc>
+    struct is_basic_string<std::basic_string<CharT, Traits, Alloc>>
+    : public std::true_type { };
 
-    /// \cond
-    template<typename Tp>
-    class option;
-    /// \endcond
-
-
-    using option_name_map = std::unordered_map<std::string_view, std::size_t>; ///< Container for storing option names
-    using option_vec = std::vector<std::unique_ptr<option_base>>; ///< Container for storing options
-
-
-
-    /// \brief Allowed option types. (int, float, char, std::string)
+    /// \brief Alias to ::value property of is_basic_string.
     template<typename T>
-    concept option_types = 
-        std::negation_v<std::is_const<T>> &&
-        std::negation_v<std::is_same<T, bool>> && (
-            std::is_integral_v<T>       ||
-            std::is_floating_point_v<T> ||
-            std::is_same_v<T, std::string> ||
-            std::is_same_v<T, std::filesystem::path>
-        );
-
+    inline constexpr bool is_basic_string_v = is_basic_string<T>::value;
     
+    /// \brief Checks whether a type is a character type.
     template<typename T>
-    concept is_string_type = 
-        std::is_same_v<T, std::string> ||
-        std::is_same_v<T,std::filesystem::path>;
-
-
-    /// \brief Checks if a given type is a character type.
-    template<typename T>
-    concept is_character_type = 
+    concept is_character = 
         std::is_same_v<T, char> ||
         std::is_same_v<T, wchar_t> ||
         std::is_same_v<T, char8_t> ||
@@ -92,6 +72,35 @@ namespace CLI
         std::is_same_v<T, signed char> ||
         std::is_same_v<T, unsigned char>;
 
+    /// \brief Checks whether a type is a string type
+    template<typename T>
+    concept is_string = 
+        is_basic_string_v<T> ||
+        std::is_same_v<T,std::filesystem::path>;
+
+    /// \brief Allowed option types. (int, float, char, std::string)
+    template<typename T>
+    concept option_types = 
+        std::negation_v<std::is_const<T>> && (
+            std::is_integral_v<T>       ||
+            std::is_floating_point_v<T> ||
+            std::is_same_v<T, std::string> ||
+            std::is_same_v<T, std::filesystem::path>
+        );
+
+
+    class clipper;
+
+    class option_base;
+    
+    /// \cond
+    template<option_types Tp>
+    class option;
+    /// \endcond
+
+
+    using option_name_map = std::unordered_map<std::string_view, std::size_t>; ///< Container for storing option names
+    using option_vec = std::vector<std::unique_ptr<option_base>>; ///< Container for storing options
 
 
     /**
@@ -181,7 +190,7 @@ namespace CLI
      *  \anchor opt
      */
     template<option_types Tp>
-    class option<Tp> : public option_base {
+    class option : public option_base {
         friend class clipper;
 
     public:
@@ -353,14 +362,14 @@ namespace CLI
          *  \param val Value to assign.
          */
         inline void assign(std::string_view val) override {
-            if constexpr (is_string_type<Tp>) {
+            if constexpr (is_string<Tp>) {
 
                 *_ptr = val;
                 if (!validate(*_ptr))
                     throw std::logic_error("Value is not allowed");
 
 
-            } else if constexpr (is_character_type<Tp>) {
+            } else if constexpr (is_character<Tp>) {
 
                 if (validate(val.front()))
                     *_ptr = val.front();
@@ -667,8 +676,7 @@ namespace CLI
          *  \param  name Option name.
          *  \return Reference to the created option.
          */
-        template<typename Tp>
-            requires std::is_same_v<Tp, bool> || option_types<Tp>
+        template<option_types Tp>
         option<Tp>& add_option(std::string_view name) {
             _names[name] = _options.size();
             _options.emplace_back(std::make_unique<option<Tp>>(name));
@@ -684,8 +692,7 @@ namespace CLI
          *  \param  alt_name Secondary option name.
          *  \return Reference to the created option.
          */
-        template<typename Tp>
-            requires std::is_same_v<Tp, bool> || option_types<Tp>
+        template<option_types Tp>
         option<Tp>& add_option(std::string_view name, std::string_view alt_name) {
             _names[name] = _options.size();
             _names[alt_name] = _options.size();
