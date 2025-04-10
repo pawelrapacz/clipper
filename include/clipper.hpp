@@ -92,6 +92,11 @@ namespace CLI
             is_string<T>
         );
 
+    /// \brief Type of the first argument of the main function.
+    using arg_count = int;
+
+    /// \brief Type of the second argument of the main function.
+    using args = char**;
 
     class clipper;
 
@@ -548,6 +553,7 @@ namespace CLI
      *  \see \ref index "Main Page" option<bool> option<Tp> option_types
      */
     class clipper {
+        using argv_ptr = const char* const* const; ///< Type of an array with arguments pointer.
     public:
         const std::vector<std::string>& wrong = _wrong; ///< Contains all errors encountered while parsing.
 
@@ -877,7 +883,7 @@ namespace CLI
          *  \param argv Arguments.
          *  \return True if arguments were parsed successfully, false otherwise.
          */
-        bool parse(int argc, const char* const* const argv) { /* <-- beautiful */
+        bool parse(int argc, argv_ptr argv) { /* <-- beautiful */
             _args_count = argc;
             bool err = false;
         
