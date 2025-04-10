@@ -98,10 +98,6 @@ namespace CLI
     /// \endcond
 
 
-    using option_name_map = std::unordered_map<std::string_view, std::size_t>; ///< Container for storing option names
-    using option_vec = std::vector<std::unique_ptr<option_base>>; ///< Container for storing options
-
-
     /**
      *  \brief Allows casting option pointers.
      *  \see option< Tp > option< booL > clipper
@@ -945,24 +941,20 @@ namespace CLI
 
 
     private:
-        std::string_view _app_name;
-        std::string_view _app_description;
-        std::string_view _version;
-        std::string_view _author;
-        std::string_view _license_notice;
-        std::string_view _web_link;
-
+      /* internal types */
+        using option_name_map = std::unordered_map<std::string_view, std::size_t>; ///< Container for storing option names.
+        using option_vec = std::vector<std::unique_ptr<option_base>>; ///< Container for storing options.
 
         /// \brief Contains a \ref option<bool> "flag" information.
         /// \brief Primarly for version and help flags.
-        struct {
+        struct helper_flag {
             std::string_view name; ///< Name of the flag.
             std::string_view alt_name; ///< Alternative name of the flag.
             option<bool> hndl {name, alt_name}; ///< \ref option<bool> "Flag" handle.
 
             /**
              *  \brief Compares string with name and alt_name.
-             *  \param str String to compare to
+             *  \param str String to compare to.
              *  \return True if the given string is equal to name or alt_name, false otherwise.
              */
             bool operator==(std::string_view str) const noexcept
@@ -974,10 +966,17 @@ namespace CLI
              */
             bool is_set() const noexcept
             { return not name.empty(); }
+        };
 
-        } _help_flag, _version_flag;
 
-
+        std::string_view _app_name;
+        std::string_view _app_description;
+        std::string_view _version;
+        std::string_view _author;
+        std::string_view _license_notice;
+        std::string_view _web_link;
+        helper_flag _help_flag;
+        helper_flag _version_flag;
         int _args_count { }; ///< Contains the argument count.
         bool _allow_no_args { false }; ///< Determines whether the app can be used without giving any arguments. \ref allow_no_args() "See more"
         option_name_map _names; ///< Contains option names.
