@@ -111,8 +111,8 @@ namespace CLI
     protected:
         /// \cond
 
-        string_view_type _vname; ///< Name of the type that the option holds.
-        string_type _doc; ///< Documentation of the option
+        std::string_view _vname; ///< Name of the type that the option holds.
+        std::string _doc; ///< Documentation of the option
         bool _req { false }; ///< Stores information about optioin requirement
 
         inline static std::size_t any_req { }; ///< Holds the number of required options.
