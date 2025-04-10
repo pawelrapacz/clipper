@@ -136,7 +136,7 @@ std::cout << cli.wrong.front();
 #include "clipper.hpp"
 #include <iostream>
 
-int main(int argc, char** argv) {
+int main(CLI::arg_count argc, CLI::args argv) {
     CLI::clipper cli("app", "1.0.0", "", "LGPLv3");
 
     bool show_help, show_version, flag;
