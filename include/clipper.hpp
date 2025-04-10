@@ -33,7 +33,6 @@
 #include <sstream>
 #include <iomanip>
 #include <filesystem>
-#include <cuchar>
 
 
 
@@ -89,32 +88,27 @@ namespace CLI
         );
 
 
-    template<typename CharT, typename Traits = std::char_traits<CharT>,
-             typename Alloc = std::allocator<CharT>>
-    class basic_clipper;
-    
+    class clipper;
 
-    using native_char_type      = std::filesystem::path::value_type;
-    using native_string_type    = std::filesystem::path::string_type;
-    using native_clipper        = basic_clipper<native_char_type>;
-    using clipper               = basic_clipper<char>;
-    using wclipper              = basic_clipper<wchar_t>;
-    using u8clipper             = basic_clipper<char8_t>;
-    using u16clipper            = basic_clipper<char16_t>;
-    using u32clipper            = basic_clipper<char32_t>;
+    class option_base;
+    
+    /// \cond
+    template<option_types Tp>
+    class option;
+    /// \endcond
+
+
+    using option_name_map = std::unordered_map<std::string_view, std::size_t>; ///< Container for storing option names
+    using option_vec = std::vector<std::unique_ptr<option_base>>; ///< Container for storing options
 
 
     /**
      *  \brief Allows casting option pointers.
      *  \see option< Tp > option< booL > clipper
      */
-    template<typename CharT, typename Traits, typename Alloc>
     class option_base {
-        friend class basic_clipper<CharT, Traits, Alloc>;
-    public:
-        using string_type       = std::basic_string<CharT, Traits, Alloc>;
-        using string_view_type  = std::basic_string_view<CharT, Traits>;
-
+        friend class clipper;
+    protected:
         /// \cond
 
         string_view_type _vname; ///< Name of the type that the option holds.
@@ -124,47 +118,47 @@ namespace CLI
         inline static std::size_t any_req { }; ///< Holds the number of required options.
 
 
-    // protected:
+    protected:
         /**
          * \brief Returns option synopsis in format: alt_name(or name) [value_info].
          * \return Option synopsis
          */
-        string_type synopsis() const noexcept
-        { return string_type(alt_name) + " " + value_info(); }
+        std::string synopsis() const noexcept
+        { return std::string(alt_name) + " " + value_info(); }
         
         /**
          * \brief Creates detailed option synopsis in format: [alt_name], name [value_info].
          * \return Detailed option synopsis
          */
-        string_type detailed_synopsis() const noexcept
-        { return (alt_name.empty() ? string_type() : string_type(alt_name) + ", ") + string_type(name) + " " + value_info(); }
+        std::string detailed_synopsis() const noexcept
+        { return (alt_name.empty() ? std::string() : std::string(alt_name) + ", ") + std::string(name) + " " + value_info(); }
 
         /**
          * \brief Creates option value info.
          * \return Option value info (empty by default)
          */
-        virtual string_type value_info() const noexcept
+        virtual std::string value_info() const noexcept
         { return ""; };
 
 
-        virtual void assign(string_view_type) = 0; ///< Converts and assigns a value to an option.
-        virtual void operator=(string_view_type) = 0; ///< Converts and assigns a value to an option.
+        virtual void assign(std::string_view) = 0; ///< Converts and assigns a value to an option.
+        virtual void operator=(std::string_view) = 0; ///< Converts and assigns a value to an option.
         
         /// \endcond
 
     public:
-        const string_view_type name; ///< Reference to name of the option.
-        const string_view_type alt_name; ///< Reference to alternative name of the option.
+        std::string_view name; ///< Reference to name of the option.
+        std::string_view alt_name; ///< Reference to alternative name of the option.
 
 
     public:
         /// \brief Constructs a new instance and sets its name reference.
         /// \brief Name and alternative name are the same.
-        option_base(string_view_type nm)
+        option_base(std::string_view nm)
             : name(nm) {}
 
         /// \brief Constructs a new instance and sets its name and alternative name reference.
-        option_base(string_view_type nm, string_view_type anm)
+        option_base(std::string_view nm, std::string_view anm)
             : name(nm), alt_name(anm) {}
 
         /// \brief Virtual default constructor.
@@ -175,7 +169,7 @@ namespace CLI
          *  \brief  Accesses option documentation.
          *  \return Documentation reference.
          */
-        const string_type& doc() const noexcept
+        const std::string& doc() const noexcept
         { return _doc; }
 
 
@@ -194,35 +188,24 @@ namespace CLI
      *  \see    option_types clipper clipper::add_option()
      *  \anchor opt
      */
-    template<option_types Tp, typename CharT, typename Traits = std::char_traits<CharT>,
-             typename Alloc = std::allocator<CharT>>
-    class option
-      : public option_base<CharT, Traits, Alloc>
-      {
-        friend class basic_clipper<CharT, Traits, Alloc>;
-
-        using typename option_base<CharT, Traits, Alloc>::string_type;
-        using typename option_base<CharT, Traits, Alloc>::string_view_type;
-
-        using option_base<CharT, Traits, Alloc>::_vname;
-        using option_base<CharT, Traits, Alloc>::_doc;
-        using option_base<CharT, Traits, Alloc>::_req;
-        using option_base<CharT, Traits, Alloc>::any_req;
+    template<option_types Tp>
+    class option : public option_base {
+        friend class clipper;
 
     public:
         /// \brief Type of function that checks whether the given value meets some requirements
         /// \anchor optPredicate
         using predicate = bool (*)(const Tp&);
-        using option_base<CharT, Traits, Alloc>::doc;
+        using option_base::doc;
 
         /// \brief Constructs a new instance and sets its name reference.
         /// \brief Name and alternative name are the same.
-        option(string_view_type nm)
-            : option_base<CharT, Traits, Alloc>(nm) {}
+        option(std::string_view nm)
+            : option_base(nm) {}
         
         /// \brief Constructs a new instance and sets its name and alternative name reference.
-        option(string_view_type nm, string_view_type anm)
-            : option_base<CharT, Traits, Alloc>(nm, anm) {}
+        option(std::string_view nm, std::string_view anm)
+            : option_base(nm, anm) {}
 
         /// \brief Default destructor.
         ~option() = default;
@@ -234,7 +217,7 @@ namespace CLI
          *  \param[out] ref Variable to write the option value to.
          *  \return Reference to itself.
          */
-        option& set(string_view_type value_name, Tp& ref) {
+        option& set(std::string_view value_name, Tp& ref) {
             _vname = value_name;
             _ptr = &ref;
             *_ptr = Tp();
@@ -251,7 +234,7 @@ namespace CLI
          *  \return Reference to itself.
          */
         template<typename V>
-        option& set(string_view_type value_name, Tp& ref, V def) {
+        option& set(std::string_view value_name, Tp& ref, V def) {
             static_assert(std::is_convertible<V, Tp>::value, "Type V must be convertible to type Tp");
 
             _vname = value_name;
@@ -295,7 +278,7 @@ namespace CLI
          *  \see predicate CLI::pred
          *  \anchor optValidate
          */
-        option& validate(string_view_type doc, predicate pred) {
+        option& validate(std::string_view doc, predicate pred) {
             _doc.append(" ").append(doc);
             _match_func = pred;
             return *this;
@@ -310,7 +293,7 @@ namespace CLI
          *  \see predicate validate() CLI::pred
          *  \anchor optRequire
          */
-        option& require(string_view_type doc, predicate pred) {
+        option& require(std::string_view doc, predicate pred) {
             return validate(doc, pred);
         }
         
@@ -319,7 +302,7 @@ namespace CLI
          *  \param  doc Option information (documentation).
          *  \return Reference to itself.
          */
-        option& doc(string_view_type doc) {
+        option& doc(std::string_view doc) {
             _doc = doc;
             return *this;
         }
@@ -340,14 +323,14 @@ namespace CLI
          *  \brief  Creates information about the allowed values of an option.
          *  \return Information in format \<type\> or (val1 val2 ...) if the value has to match values set with match().
          */
-        string_type value_info() const noexcept override {
+        std::string value_info() const noexcept override {
             if (_match_list.empty()) {
-                return "<" + string_type(_vname) + ">";
+                return "<" + std::string(_vname) + ">";
             }
             else {
-                string_type list;
+                std::string list;
 
-                if constexpr (std::is_same_v<Tp, string_type>) {
+                if constexpr (std::is_same_v<Tp, std::string>) {
                     for (Tp i : _match_list)
                         list.append(i).push_back(' ');
                 }
@@ -377,7 +360,7 @@ namespace CLI
          *  \brief Converts and assigns a value to an option.
          *  \param val Value to assign.
          */
-        inline void assign(string_view_type val) override {
+        inline void assign(std::string_view val) override {
             if constexpr (is_string<Tp>) {
 
                 *_ptr = val;
@@ -409,7 +392,7 @@ namespace CLI
          *  \brief Converts and assigns a value to an option.
          *  \param val Value to assign.
          */
-        inline void operator=(string_view_type val) override {
+        inline void operator=(std::string_view val) override {
             assign(val);
         }
 
@@ -445,7 +428,7 @@ namespace CLI
 
     private:
         Tp* _ptr = nullptr;         ///< Pointer where to write parsed value to.
-        // string_view_type _match_func_doc; ///< Documentation of the requirements of a \ref predicate function i.e. [0; 1], length < 10, lower case
+        // std::string _match_func_doc; ///< Documentation of the requirements of a \ref predicate function i.e. [0; 1], length < 10, lower case
         predicate _match_func = nullptr; ///< Function that checks wheather the value is allowed.
         std::set<Tp> _match_list;   ///< Contains allowed values (if empty all viable values are allowed).
     };
@@ -455,31 +438,21 @@ namespace CLI
      *  \brief Contains flag properties (no argument option - boolean).
      *  \see   clipper clipper::add_flag() clipper::add_option()
      */
-    template<typename CharT, typename Traits, typename Alloc>
-    class option<bool, CharT, Traits, Alloc>
-      : public option_base<CharT, Traits, Alloc> 
-      {
-        friend class basic_clipper<CharT, Traits, Alloc>;
-
-        using typename option_base<CharT, Traits, Alloc>::string_type;
-        using typename option_base<CharT, Traits, Alloc>::string_view_type;
-
-        using option_base<CharT, Traits, Alloc>::_vname;
-        using option_base<CharT, Traits, Alloc>::_doc;
-        using option_base<CharT, Traits, Alloc>::_req;
-        using option_base<CharT, Traits, Alloc>::any_req;
+    template<>
+    class option<bool> : public option_base {
+        friend class clipper;
 
     public:
-        using option_base<CharT, Traits, Alloc>::doc;
+        using option_base::doc;
 
         /// \brief Constructs a new instance and sets its name reference.
         /// \brief Name and alternative name are the same.
-        option(string_view_type nm)
-            : option_base<CharT, Traits, Alloc>(nm) {}
+        option(std::string_view nm)
+            : option_base(nm) {}
         
         /// \brief Constructs a new instance and sets its name and alternative name reference.
-        option(string_view_type nm, string_view_type anm)
-            : option_base<CharT, Traits, Alloc>(nm, anm) {}
+        option(std::string_view nm, std::string_view anm)
+            : option_base(nm, anm) {}
 
         /// \brief Default destructor.
         ~option() = default; 
@@ -502,7 +475,7 @@ namespace CLI
          *  \param  doc \ref option< bool > "Flag (option<bool>)" information (documentation).
          *  \return Reference to itself.
          */
-        option& doc(string_view_type doc) {
+        option& doc(std::string_view doc) {
             _doc = doc;
             return *this;
         }
@@ -526,7 +499,7 @@ namespace CLI
          *  \brief Converts and assigns a value to an option.
          *  \param val Value to assign.
          */
-        inline void assign(string_view_type val) override {
+        inline void assign(std::string_view val) override {
             *_ptr = true;
         }
 
@@ -535,7 +508,7 @@ namespace CLI
          *  \brief Converts and assigns a value to an option.
          *  \param val Value to assign.
          */
-        inline void operator=(string_view_type val) override {
+        inline void operator=(std::string_view val) override {
             *_ptr = true;
         }
 
@@ -566,43 +539,32 @@ namespace CLI
      * 
      *  \see \ref index "Main Page" option<bool> option< Tp > option_types
      */
-    template<typename CharT, typename Traits, typename Alloc>
-    class basic_clipper {
+    class clipper {
     public:
-        using string_type           = std::basic_string<CharT, Traits, Alloc>;
-        using string_view_type      = std::basic_string_view<CharT, Traits>;
-        using ostringstream_type    = std::basic_ostringstream<CharT, Traits, Alloc>;
-        using option_base_type      = option_base<CharT, Traits, Alloc>;
-          template<option_types Tp>
-        using option_type           = option<Tp, CharT, Traits, Alloc>;
-    private:
-        using option_name_map       = std::unordered_map<string_view_type, std::size_t>; ///< Container for storing option names
-        using option_vec            = std::vector<std::unique_ptr<option_base_type>>; ///< Container for storing options
+        const std::vector<std::string>& wrong = _wrong; ///< Contains all errors encountered while parsing.
 
     public:
-        const std::vector<string_type>& wrong = _wrong; ///< Contains all errors encountered while parsing.
-    
         /// \brief Default constructor.
-        basic_clipper() = default;
+        clipper() = default;
 
-        /// \brief Constructs a basic_clipper instance and sets the app name.
-        basic_clipper(string_view_type app_name)
+        /// \brief Constructs a clipper instance and sets the app name.
+        clipper(std::string_view app_name)
             : _app_name(app_name) {}
 
-        /// \brief Constructs a basic_clipper instance and sets the app name and other information.
-        basic_clipper(string_view_type app_name, string_view_type version, string_view_type author, string_view_type license_notice)
+        /// \brief Constructs a clipper instance and sets the app name and other information.
+        clipper(std::string_view app_name, std::string_view version, std::string_view author, std::string_view license_notice)
             : _app_name(app_name), _version(version), _author(author), _license_notice(license_notice) {}
 
 
         /// \brief Default destructor.
-        ~basic_clipper() = default;
+        ~clipper() = default;
 
 
         /**
          *  \brief  Sets the (application) name.
          *  \return Reference to itself.
          */
-        basic_clipper& name(string_view_type name) noexcept {
+        clipper& name(std::string_view name) noexcept {
             _app_name = name;
             return *this;
         }
@@ -611,7 +573,7 @@ namespace CLI
          *  \brief  Gets the (application) name.
          *  \return Application name.
          */
-        string_view_type name() const noexcept {
+        std::string_view name() const noexcept {
             return _app_name;
         }
 
@@ -620,7 +582,7 @@ namespace CLI
          *  \brief  Sets the description.
          *  \return Reference to itself.
          */
-        basic_clipper& description(string_view_type description) noexcept {
+        clipper& description(std::string_view description) noexcept {
             _app_description = description;
             return *this;
         }
@@ -629,7 +591,7 @@ namespace CLI
          *  \brief 	Gets the description.
          *  \return Description reference.
          */
-        string_view_type description() const noexcept {
+        std::string_view description() const noexcept {
             return _app_description;
         }
 
@@ -638,7 +600,7 @@ namespace CLI
          *  \brief  Sets the version.
          *  \return Reference to itself.
          */
-        basic_clipper& version(string_view_type version) noexcept {
+        clipper& version(std::string_view version) noexcept {
             _version = version;
             return *this;
         }
@@ -647,7 +609,7 @@ namespace CLI
          *  \brief  Gets the version.
          *  \return Version reference.
          */
-        string_view_type version() const noexcept {
+        std::string_view version() const noexcept {
             return _version;
         }
 
@@ -656,7 +618,7 @@ namespace CLI
          *  \brief  Sets the author.
          *  \return Reference to itself.
          */
-        basic_clipper& author(string_view_type name) noexcept {
+        clipper& author(std::string_view name) noexcept {
             _author = name;
             return *this;
         }
@@ -665,7 +627,7 @@ namespace CLI
          *  \brief  Gets the author.
          *  \return Author reference.
          */
-        string_view_type author() const noexcept {
+        std::string_view author() const noexcept {
             return _author;
         }
 
@@ -674,7 +636,7 @@ namespace CLI
          *  \brief  Sets the license notice.
          *  \return Reference to itself.
          */
-        basic_clipper& license(string_view_type license_notice) noexcept {
+        clipper& license(std::string_view license_notice) noexcept {
             _license_notice = license_notice;
             return *this;
         }
@@ -683,7 +645,7 @@ namespace CLI
          *  \brief 	Gets the license notice.
          *  \return License notice reference.
          */
-        string_view_type license() const noexcept {
+        std::string_view license() const noexcept {
             return _license_notice;
         }
 
@@ -692,7 +654,7 @@ namespace CLI
          *  \brief  Sets the web link.
          *  \return Reference to itself.
          */
-        basic_clipper& web_link(string_view_type link) noexcept {
+        clipper& web_link(std::string_view link) noexcept {
             _web_link = link;
             return *this;
         }
@@ -701,7 +663,7 @@ namespace CLI
          *  \brief  Gets the web link.
          *  \return Web link reference.
          */
-        string_view_type web_link() const noexcept {
+        std::string_view web_link() const noexcept {
             return _web_link;
         }
 
@@ -714,10 +676,10 @@ namespace CLI
          *  \return Reference to the created option.
          */
         template<option_types Tp>
-        option_type<Tp>& add_option(string_view_type name) {
+        option<Tp>& add_option(std::string_view name) {
             _names[name] = _options.size();
-            _options.emplace_back(std::make_unique<option_type<Tp>>(name));
-            return *static_cast<option_type<Tp>*>(_options.back().get());
+            _options.emplace_back(std::make_unique<option<Tp>>(name));
+            return *static_cast<option<Tp>*>(_options.back().get());
         }
 
 
@@ -730,13 +692,13 @@ namespace CLI
          *  \return Reference to the created option.
          */
         template<option_types Tp>
-        option_type<Tp>& add_option(string_view_type name, string_view_type alt_name) {
+        option<Tp>& add_option(std::string_view name, std::string_view alt_name) {
             _names[name] = _options.size();
             _names[alt_name] = _options.size();
 
-            _options.emplace_back(std::make_unique<option_type<Tp>>(name, alt_name));
+            _options.emplace_back(std::make_unique<option<Tp>>(name, alt_name));
 
-            return *static_cast<option_type<Tp>*>(_options.back().get());
+            return *static_cast<option<Tp>*>(_options.back().get());
         }
 
 
@@ -750,7 +712,7 @@ namespace CLI
          *  \param  name Flag name.
          *  \return Reference to the created flag.
          */
-        option_type<bool>& add_flag(string_view_type name) {
+        option<bool>& add_flag(std::string_view name) {
             return add_option<bool>(name);
         }
 
@@ -766,7 +728,7 @@ namespace CLI
          *  \param  alt_name Secondary flag name.
          *  \return Reference to the created flag.
          */
-        option_type<bool>& add_flag(string_view_type name, string_view_type alt_name) {
+        option<bool>& add_flag(std::string_view name, std::string_view alt_name) {
             return add_option<bool>(name, alt_name);
         }
 
@@ -782,7 +744,7 @@ namespace CLI
          *  \param  alt_name Secondary flag name. (optional)
          *  \return Help/Version flag reference.
          */
-        option_type<bool>& help_flag(string_view_type name, string_view_type alt_name = "") {
+        option<bool>& help_flag(std::string_view name, std::string_view alt_name = "") {
             _help_flag.name = name;
             _help_flag.alt_name = alt_name;
             _help_flag.hndl.doc("displays help");
@@ -791,7 +753,7 @@ namespace CLI
 
 
         /// \copydoc help_flag
-        option_type<bool>& version_flag(string_view_type name, string_view_type alt_name = "") {
+        option<bool>& version_flag(std::string_view name, std::string_view alt_name = "") {
             _version_flag.name = name;
             _version_flag.alt_name = alt_name;
             _version_flag.hndl.doc("displays version information");
@@ -803,80 +765,78 @@ namespace CLI
          *  \brief  Creates a documentation (man page, help) for the application.
          *  \return Documentation.
          */
-        inline string_type make_help() const noexcept {
-            // auto add_help = [](const option_base_type* const opt, ostringstream_type& stream) {
-            //     auto snps = opt->detailed_synopsis();
+        inline std::string make_help() const noexcept {
+            auto add_help = [](const option_base* const opt, std::ostringstream& stream) {
+                auto snps = opt->detailed_synopsis();
 
-            //     if (CLIPPER_HELP_ARG_FIELD_WIDTH <= snps.length()) {
-            //         stream << '\t' << snps << "\n\t" << string_type(CLIPPER_HELP_ARG_FIELD_WIDTH, ' ') << opt->doc() << '\n';
-            //     }
-            //     else
-            //         stream << '\t' << std::left << std::setw(CLIPPER_HELP_ARG_FIELD_WIDTH) << snps << opt->doc() << '\n';
-            // };
+                if (CLIPPER_HELP_ARG_FIELD_WIDTH <= snps.length()) {
+                    stream << '\t' << snps << "\n\t" << std::string(CLIPPER_HELP_ARG_FIELD_WIDTH, ' ') << opt->doc() << '\n';
+                }
+                else
+                    stream << '\t' << std::left << std::setw(CLIPPER_HELP_ARG_FIELD_WIDTH) << snps << opt->doc() << '\n';
+            };
 
-            // ostringstream_type flags;
-            // ostringstream_type options;
+            std::ostringstream flags;
+            std::ostringstream options;
             
-            // if (_help_flag.is_set())
-            //     add_help(&_help_flag.hndl, flags);
+            if (_help_flag.is_set())
+                add_help(&_help_flag.hndl, flags);
 
-            // if (_version_flag.is_set())
-            //     add_help(&_version_flag.hndl, flags);
+            if (_version_flag.is_set())
+                add_help(&_version_flag.hndl, flags);
 
-            // for (auto& opt : _options) {
-            //     if (dynamic_cast<option_type<bool>*>(opt.get()))
-            //         add_help(opt.get(), flags);
-            //     else
-            //         add_help(opt.get(), options);
-            // }
+            for (auto& opt : _options) {
+                if (dynamic_cast<option<bool>*>(opt.get()))
+                    add_help(opt.get(), flags);
+                else
+                    add_help(opt.get(), options);
+            }
 
 
 
-            // ostringstream_type help;
+            std::ostringstream help;
 
-            // if (not _app_description.empty())
-            //     help << "DESCRIPTION\n\t" << description() << "\n\n";
+            if (not _app_description.empty())
+                help << "DESCRIPTION\n\t" << description() << "\n\n";
             
-            // // SYNOPSIS
-            // help << "SYNOPSIS\n\t" << _app_name;
+            // SYNOPSIS
+            help << "SYNOPSIS\n\t" << _app_name;
 
-            // for (auto& opt : _options)
-            //     if (opt->req())
-            //         help << " " << opt->synopsis();
+            for (auto& opt : _options)
+                if (opt->req())
+                    help << " " << opt->synopsis();
 
-            // help << " [...]\n";
-            // // end SYNOPSIS
+            help << " [...]\n";
+            // end SYNOPSIS
 
-            // if (not flags.view().empty())
-            //     help << "\nFLAGS\n" << flags.view();
+            if (not flags.view().empty())
+                help << "\nFLAGS\n" << flags.view();
 
-            // if (not options.view().empty())
-            //     help << "\nOPTIONS\n" << options.view();
+            if (not options.view().empty())
+                help << "\nOPTIONS\n" << options.view();
 
-            // if (not _license_notice.empty())
-            //     help << "\nLICENSE\n\t" << _license_notice << "\n";
+            if (not _license_notice.empty())
+                help << "\nLICENSE\n\t" << _license_notice << "\n";
 
-            // if (not _author.empty())
-            //     help << "\nAUTHOR\n\t" << _author << "\n";
+            if (not _author.empty())
+                help << "\nAUTHOR\n\t" << _author << "\n";
 
-            // if (not _web_link.empty())
-            //     help << "\n" << _web_link << "\n";
+            if (not _web_link.empty())
+                help << "\n" << _web_link << "\n";
 
-            // return help.str();
-            return string_type();
+            return help.str();
         }
-        
-        
+
+
         /**
          *  \brief  Creates a version notice for the application.
          *  \return Version notice.
          */
-        inline string_type make_version_info() const noexcept {
-            // return
-            //     string_type(_app_name).append(" ")
-            //     .append(_version).append("\n")
-            //     .append(_author).append("\n");
-            return string_type();
+        inline std::string make_version_info() const noexcept {
+            return
+                std::string(_app_name).append(" ")
+                .append(_version).append("\n")
+                .append(_author).append("\n");
         }
 
 
@@ -910,7 +870,7 @@ namespace CLI
          *  \param argv Arguments.
          *  \return True if arguments were parsed successfully, false otherwise.
          */
-        bool parse(int argc, const CharT* const* const argv) { /* <-- beautiful */
+        bool parse(int argc, const char* const* const argv) { /* <-- beautiful */
             _args_count = argc;
             bool err = false;
         
@@ -918,8 +878,8 @@ namespace CLI
             if (_allow_no_args && argc == 1)
                 return !err;
 
-            auto req_count = option_base_type::any_req;
-            std::queue<string_view_type> args;
+            auto req_count = option_base::any_req;
+            std::queue<std::string_view> args;
             for (int i = 1; i < argc; i++) // argv[0] is the command name, it is meant to be omitted
                 args.push(argv[i]);
 
@@ -942,7 +902,7 @@ namespace CLI
                     set_option(args, err); // it pops the option and its value
                 }
                 else {
-                    _wrong.emplace_back("[" + string_type(args.front()) + "] Unkonown argument");
+                    _wrong.emplace_back("[" + std::string(args.front()) + "] Unkonown argument");
                     err = true;
                     args.pop(); // necessary to properly continue
                 }
@@ -960,22 +920,22 @@ namespace CLI
 
     private:
         /// \brief Parses value of an option/flag and catches errors.
-        inline void set_option(std::queue<string_view_type>& args, bool& error) {
+        inline void set_option(std::queue<std::string_view>& args, bool& error) {
             auto& opt = _options[_names[args.front()]];
-            string_view_type temp_option_name = args.front();
+            std::string_view temp_option_name = args.front();
             args.pop();
 
-            if ( auto optFlag = dynamic_cast<option_type<bool>*>(opt.get()) ) {
+            if ( auto optFlag = dynamic_cast<option<bool>*>(opt.get()) ) {
                 *optFlag = true;
             }
             else if (args.empty()) {
-                _wrong.emplace_back("[" + string_type(temp_option_name) + "] Missing option value");
+                _wrong.emplace_back("[" + std::string(temp_option_name) + "] Missing option value");
                 error = true;
             }
             else {
                 try { opt->assign(args.front()); }
                 catch (...) {
-                    _wrong.emplace_back("[" + string_type(temp_option_name) + "] Value " + string_type(args.front()) + " is not allowed \n\t{ " + opt->detailed_synopsis() + "  " + opt->doc() + " }");
+                    _wrong.emplace_back("[" + std::string(temp_option_name) + "] Value " + std::string(args.front()) + " is not allowed \n\t{ " + opt->detailed_synopsis() + "  " + opt->doc() + " }");
                     error = true;
                 }
                 args.pop();
@@ -985,27 +945,27 @@ namespace CLI
 
 
     private:
-        string_view_type _app_name;
-        string_view_type _app_description;
-        string_view_type _version;
-        string_view_type _author;
-        string_view_type _license_notice;
-        string_view_type _web_link;
+        std::string_view _app_name;
+        std::string_view _app_description;
+        std::string_view _version;
+        std::string_view _author;
+        std::string_view _license_notice;
+        std::string_view _web_link;
 
 
         /// \brief Contains a \ref option<bool> "flag" information.
         /// \brief Primarly for version and help flags.
         struct {
-            string_view_type name; ///< Name of the flag.
-            string_view_type alt_name; ///< Alternative name of the flag.
-            option_type<bool> hndl {name, alt_name}; ///< \ref option<bool> "Flag" handle.
+            std::string_view name; ///< Name of the flag.
+            std::string_view alt_name; ///< Alternative name of the flag.
+            option<bool> hndl {name, alt_name}; ///< \ref option<bool> "Flag" handle.
 
             /**
              *  \brief Compares string with name and alt_name.
              *  \param str String to compare to
              *  \return True if the given string is equal to name or alt_name, false otherwise.
              */
-            bool operator==(string_view_type str) const noexcept
+            bool operator==(std::string_view str) const noexcept
             { return name == str or alt_name == str; }
 
             /**
@@ -1022,7 +982,7 @@ namespace CLI
         bool _allow_no_args { false }; ///< Determines whether the app can be used without giving any arguments. \ref allow_no_args() "See more"
         option_name_map _names; ///< Contains option names.
         option_vec _options; ///< Contains all options.
-        std::vector<string_type> _wrong; ///< Contains all errors encountered while parsing.
+        std::vector<std::string> _wrong; ///< Contains all errors encountered while parsing.
     };
 
 } // namespace CLI
