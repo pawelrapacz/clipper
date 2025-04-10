@@ -14,7 +14,7 @@
   -  [Usage](#usage)
   -  [Example](#example)
 - [Details](#details)
-  - [⚠ important](#important)
+  - [⚠ important](#-important)
   - [clipper](#clipper-class)
   - [flags](#flag-class)
   - [options](#option-class)

@@ -48,19 +48,23 @@
  */
 namespace CLI
 {
+    /// \internal
     /// \brief Checks whether a type is std::basic_string.
     template<typename>
     struct is_basic_string : public std::false_type { };
 
+    /// \internal
     /// \brief Checks whether a type is std::basic_string.
     template<typename CharT, typename Traits, typename Alloc>
     struct is_basic_string<std::basic_string<CharT, Traits, Alloc>>
     : public std::true_type { };
 
+    /// \internal
     /// \brief Alias to ::value property of is_basic_string.
     template<typename T>
     inline constexpr bool is_basic_string_v = is_basic_string<T>::value;
     
+    /// \internal
     /// \brief Checks whether a type is a character type.
     template<typename T>
     concept is_character = 
@@ -72,6 +76,7 @@ namespace CLI
         std::is_same_v<T, signed char> ||
         std::is_same_v<T, unsigned char>;
 
+    /// \internal
     /// \brief Checks whether a type is a string type
     template<typename T>
     concept is_string = 
@@ -90,32 +95,33 @@ namespace CLI
 
     class clipper;
 
-    class option_base;
-    
-    /// \cond
-    template<option_types Tp>
-    class option;
-    /// \endcond
-
 
     /**
      *  \brief Allows casting option pointers.
-     *  \see option< Tp > option< booL > clipper
+     *  \see option<Tp> option<bool> clipper
      */
     class option_base {
         friend class clipper;
     protected:
-        /// \cond
+        /// \internal
+        /// \brief Name of the type that the option holds.
+        std::string_view _vname;
 
-        std::string_view _vname; ///< Name of the type that the option holds.
-        std::string _doc; ///< Documentation of the option
-        bool _req { false }; ///< Stores information about optioin requirement
+        /// \internal
+        /// \brief Documentation of the option.
+        std::string _doc;
 
-        inline static std::size_t any_req { }; ///< Holds the number of required options.
+        /// \internal
+        /// \brief Stores information about optioin requirement.
+        bool _req { false };
 
+        /// \internal
+        /// \brief Holds the number of required options.
+        inline static std::size_t any_req { };
 
     protected:
         /**
+         * \internal
          * \brief Returns option synopsis in format: alt_name(or name) [value_info].
          * \return Option synopsis
          */
@@ -123,24 +129,29 @@ namespace CLI
         { return std::string(alt_name) + " " + value_info(); }
         
         /**
+         * \internal
          * \brief Creates detailed option synopsis in format: [alt_name], name [value_info].
          * \return Detailed option synopsis
          */
         std::string detailed_synopsis() const noexcept
         { return (alt_name.empty() ? std::string() : std::string(alt_name) + ", ") + std::string(name) + " " + value_info(); }
-
+        
         /**
+         * \internal
          * \brief Creates option value info.
          * \return Option value info (empty by default)
          */
         virtual std::string value_info() const noexcept
         { return ""; };
 
+        /// \internal Converts and assigns a value to an option.
+        /// \brief Creates option value info.
+        virtual void assign(std::string_view) = 0;
 
-        virtual void assign(std::string_view) = 0; ///< Converts and assigns a value to an option.
-        virtual void operator=(std::string_view) = 0; ///< Converts and assigns a value to an option.
+        /// \internal Converts and assigns a value to an option.
+        /// \brief Creates option value info.
+        virtual void operator=(std::string_view) = 0;
         
-        /// \endcond
 
     public:
         std::string_view name; ///< Reference to name of the option.
@@ -181,7 +192,7 @@ namespace CLI
     /**
      *  \brief  Contains option properties.
      *  \tparam Tp Option (option value) type.
-     *  \see    option_types clipper clipper::add_option()
+     *  \see    option<bool> option_types clipper clipper::add_option()
      *  \anchor opt
      */
     template<option_types Tp>
@@ -350,9 +361,8 @@ namespace CLI
 
 
     protected:
-        /// \cond
-
         /**
+         *  \internal
          *  \brief Converts and assigns a value to an option.
          *  \param val Value to assign.
          */
@@ -376,15 +386,16 @@ namespace CLI
                 Tp temp_v;
 
                 if (std::from_chars(val.begin(), val.end(), temp_v).ec == std::errc{} && validate(temp_v))
-                    *_ptr = temp_v;
+                *_ptr = temp_v;
                 else
                     throw std::logic_error("Value is not allowed");
                 
+                }
             }
-        }
 
-
+            
         /**
+         *  \internal
          *  \brief Converts and assigns a value to an option.
          *  \param val Value to assign.
          */
@@ -394,6 +405,7 @@ namespace CLI
 
 
         /**
+         *  \internal
          *  \brief Assigns a value to an option.
          *  \param val Assigned value.
          */
@@ -406,8 +418,9 @@ namespace CLI
             }
         }
         
-
+        
         /**
+         *  \internal
          *  \brief Validates a given value with an option requirements.
          *  \param val Value to perform validation on
          *  \return True if the given value is valid, false otherwise.
@@ -416,11 +429,10 @@ namespace CLI
         bool validate(const Tp& val) const {
             if (nullptr == _match_func)
                 return _match_list.empty() || _match_list.contains(val);
-            else
+                else
                 return _match_func(val) && (_match_list.empty() || _match_list.contains(val));
         }
 
-        /// \endcond
 
     private:
         Tp* _ptr = nullptr;         ///< Pointer where to write parsed value to.
@@ -489,9 +501,8 @@ namespace CLI
 
 
     protected:
-        /// \cond
-
         /**
+         *  \internal
          *  \brief Converts and assigns a value to an option.
          *  \param val Value to assign.
          */
@@ -501,22 +512,23 @@ namespace CLI
 
 
         /**
+         *  \internal
          *  \brief Converts and assigns a value to an option.
          *  \param val Value to assign.
          */
         inline void operator=(std::string_view val) override {
             *_ptr = true;
         }
-
-
+        
+        
         /**
+         *  \internal
          *  \brief Assigns a value to an \ref option< bool > "flag (option<bool>)".
          */
         inline void operator=(bool val) {
             *_ptr = val;
         }
 
-        /// \endcond
 
     private:
         bool* _ptr = nullptr; ///< Pointer where to write parsed value (state) to.
@@ -533,7 +545,7 @@ namespace CLI
      * 
      * Basically everything you need.
      * 
-     *  \see \ref index "Main Page" option<bool> option< Tp > option_types
+     *  \see \ref index "Main Page" option<bool> option<Tp> option_types
      */
     class clipper {
     public:
@@ -666,10 +678,10 @@ namespace CLI
 
         /**
          *  \brief  Adds an option of a given type.
-         *  \see    option_types option< Tp >
          *  \tparam Tp Option (option value) type.
          *  \param  name Option name.
          *  \return Reference to the created option.
+         *  \see    option_types option<Tp>
          */
         template<option_types Tp>
         option<Tp>& add_option(std::string_view name) {
@@ -681,11 +693,11 @@ namespace CLI
 
         /**
          *  \brief  Adds an option of a given type.
-         *  \see    option_types option< Tp >
          *  \tparam Tp Option (option value) type.
          *  \param  name Primary option name.
          *  \param  alt_name Secondary option name.
          *  \return Reference to the created option.
+         *  \see    option_types option<Tp>
          */
         template<option_types Tp>
         option<Tp>& add_option(std::string_view name, std::string_view alt_name) {
@@ -704,14 +716,13 @@ namespace CLI
          *  This function adds new \ref option< bool > "flag (option<bool>)".
          *  Internally it just calls \ref add_option() "add_option<bool>(...)".
          * 
-         *  \see    option< bool >
          *  \param  name Flag name.
          *  \return Reference to the created flag.
+         *  \see    option<bool>
          */
         option<bool>& add_flag(std::string_view name) {
             return add_option<bool>(name);
         }
-
 
         /**
          *  \brief  Adds a \ref option< bool > "flag (option<bool>)".
@@ -719,10 +730,10 @@ namespace CLI
          *  This function adds new \ref option< bool > "flag (option<bool>)".
          *  Internally it just calls \ref add_option() "add_option<bool>(...)".
          * 
-         *  \see    option< bool >
-         *  \param  name Primary flag name.
+         *  \param  name Flag name.
          *  \param  alt_name Secondary flag name.
          *  \return Reference to the created flag.
+         *  \see    option<bool>
          */
         option<bool>& add_flag(std::string_view name, std::string_view alt_name) {
             return add_option<bool>(name, alt_name);
@@ -735,10 +746,10 @@ namespace CLI
          *  Help/Version flag is not a standard flag, it has to be used independently.
          *  When used with other options is treated as an unknown option.
          * 
-         *  \see    option< bool >
          *  \param  name Primary flag name.
          *  \param  alt_name Secondary flag name. (optional)
          *  \return Help/Version flag reference.
+         *  \see    option<bool>
          */
         option<bool>& help_flag(std::string_view name, std::string_view alt_name = "") {
             _help_flag.name = name;
@@ -851,8 +862,8 @@ namespace CLI
 
         /**
          *  \brief Checks if no arguments were given.
-         *  \see allow_no_args() parse()
          *  \return True if no arguments were given (always true before parsing), false if any arguments were given.
+         *  \see allow_no_args() parse()
          */
         inline bool no_args() const {
             return _args_count == 1;
@@ -915,6 +926,7 @@ namespace CLI
 
 
     private:
+        /// \internal
         /// \brief Parses value of an option/flag and catches errors.
         inline void set_option(std::queue<std::string_view>& args, bool& error) {
             auto& opt = _options[_names[args.front()]];
