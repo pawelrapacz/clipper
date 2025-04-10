@@ -5,9 +5,7 @@
  * See the LICENSE file in the root directory of this source tree for more information.
  */
 
-
 #pragma once
-
 
 /**
  *  \file       clipper.hpp
@@ -17,7 +15,6 @@
  *  \date       2024
  *  \copyright  MIT License
  */
-
 
 #include <stdexcept>
 #include <type_traits>
@@ -35,12 +32,10 @@
 #include <filesystem>
 
 
-
 #ifndef CLIPPER_HELP_ARG_FIELD_WIDTH
     /// \brief Defines the width of the argument name field in help output.
     #define CLIPPER_HELP_ARG_FIELD_WIDTH    22
 #endif
-
 
 
 /**
@@ -156,12 +151,10 @@ namespace CLI
         /// \internal Converts and assigns a value to an option.
         /// \brief Creates option value info.
         virtual void operator=(std::string_view) = 0;
-        
 
     public:
         std::string_view name; ///< Reference to name of the option.
         std::string_view alt_name; ///< Reference to alternative name of the option.
-
 
     public:
         /// \brief Constructs a new instance and sets its name reference.
@@ -176,14 +169,12 @@ namespace CLI
         /// \brief Virtual default constructor.
         virtual ~option_base() = default;
 
-
         /**
          *  \brief  Accesses option documentation.
          *  \return Documentation reference.
          */
         const std::string& doc() const noexcept
         { return _doc; }
-
 
         /**
          *  \brief  Checks whether the option is required.
@@ -203,7 +194,6 @@ namespace CLI
     template<option_types Tp>
     class option : public option_base {
         friend class clipper;
-
     public:
         /// \brief Type of function that checks whether the given value meets some requirements
         /// \anchor optPredicate
@@ -222,7 +212,6 @@ namespace CLI
         /// \brief Default destructor.
         ~option() = default;
 
-
         /**
          *  \brief  Sets the variable to write to and the value name.
          *  \param  value_name Name of the value type e.g. file, charset.
@@ -235,7 +224,6 @@ namespace CLI
             *_ptr = Tp();
             return *this;
         }
-
 
         /**
          *  \brief  Sets the variable to write to and the value name.
@@ -255,7 +243,6 @@ namespace CLI
             return *this;
         }
 
-
         /**
          *  \brief  Sets allowed values.
          *  \param  val Values of the types convertible to the option types.
@@ -269,7 +256,6 @@ namespace CLI
             return *this;
         }
 
-
         /**
          *  \brief  Sets allowed values (same as \ref match()).
          *  \param  val Values of the types convertible to the option types.
@@ -280,7 +266,6 @@ namespace CLI
         option& allow(Args&&... val) {
             return match(std::forward<Args>(val)...);
         }
-
 
         /**
          *  \brief  Sets a function that validates the option value.
@@ -295,7 +280,6 @@ namespace CLI
             _match_func = pred;
             return *this;
         }
-
 
         /**
          *  \brief  Sets a function that validates the option value (same as \ref validate()).
@@ -319,7 +303,6 @@ namespace CLI
             return *this;
         }
 
-
         /**
          *  \brief  Sets the option to be required.
          *  \return Reference to itself.
@@ -329,7 +312,6 @@ namespace CLI
             any_req++;
             return *this;
         }
-
 
         /**
          *  \brief  Creates information about the allowed values of an option.
@@ -364,7 +346,6 @@ namespace CLI
             }
         }
 
-
     protected:
         /**
          *  \internal
@@ -373,32 +354,26 @@ namespace CLI
          */
         inline void assign(std::string_view val) override {
             if constexpr (is_string<Tp>) {
-
                 *_ptr = val;
                 if (!validate(*_ptr))
                     throw std::logic_error("Value is not allowed");
-
-
-            } else if constexpr (is_character<Tp>) {
-
+            }
+            else if constexpr (is_character<Tp>) {
                 if (validate(val.front()))
                     *_ptr = val.front();
                 else
                     throw std::logic_error("Value is not allowed");
-
-            } else {
-
+            }
+            else {
                 Tp temp_v;
 
                 if (std::from_chars(val.begin(), val.end(), temp_v).ec == std::errc{} && validate(temp_v))
-                *_ptr = temp_v;
+                    *_ptr = temp_v;
                 else
                     throw std::logic_error("Value is not allowed");
-                
-                }
             }
+        }
 
-            
         /**
          *  \internal
          *  \brief Converts and assigns a value to an option.
@@ -407,7 +382,6 @@ namespace CLI
         inline void operator=(std::string_view val) override {
             assign(val);
         }
-
 
         /**
          *  \internal
@@ -423,7 +397,6 @@ namespace CLI
             }
         }
         
-        
         /**
          *  \internal
          *  \brief Validates a given value with an option requirements.
@@ -437,7 +410,6 @@ namespace CLI
                 else
                 return _match_func(val) && (_match_list.empty() || _match_list.contains(val));
         }
-
 
     private:
         Tp* _ptr = nullptr;         ///< Pointer where to write parsed value to.
@@ -454,7 +426,6 @@ namespace CLI
     template<>
     class option<bool> : public option_base {
         friend class clipper;
-
     public:
         using option_base::doc;
 
@@ -470,7 +441,6 @@ namespace CLI
         /// \brief Default destructor.
         ~option() = default; 
 
-
         /**
          *  \brief  Sets the variable to write to.
          *  \param[out] ref Variable to write the \ref option< bool > "flag (option<bool>)" value (state) to.
@@ -482,7 +452,6 @@ namespace CLI
             return *this;
         }
 
-
         /**
          *  \brief  Sets the \ref option< bool > "flag (option<bool>)" description.
          *  \param  doc \ref option< bool > "Flag (option<bool>)" information (documentation).
@@ -492,7 +461,6 @@ namespace CLI
             _doc = doc;
             return *this;
         }
-
 
         /**
          *  \brief  Sets the \ref option< bool > "flag (option<bool>)" to be required.
@@ -504,7 +472,6 @@ namespace CLI
             return *this;
         }
 
-
     protected:
         /**
          *  \internal
@@ -515,7 +482,6 @@ namespace CLI
             *_ptr = true;
         }
 
-
         /**
          *  \internal
          *  \brief Converts and assigns a value to an option.
@@ -524,8 +490,7 @@ namespace CLI
         inline void operator=(std::string_view val) override {
             *_ptr = true;
         }
-        
-        
+
         /**
          *  \internal
          *  \brief Assigns a value to an \ref option< bool > "flag (option<bool>)".
@@ -533,7 +498,6 @@ namespace CLI
         inline void operator=(bool val) {
             *_ptr = val;
         }
-
 
     private:
         bool* _ptr = nullptr; ///< Pointer where to write parsed value (state) to.
@@ -557,7 +521,6 @@ namespace CLI
     public:
         const std::vector<std::string>& wrong = _wrong; ///< Contains all errors encountered while parsing.
 
-    public:
         /// \brief Default constructor.
         clipper() = default;
 
@@ -569,10 +532,8 @@ namespace CLI
         clipper(std::string_view app_name, std::string_view version, std::string_view author, std::string_view license_notice)
             : _app_name(app_name), _version(version), _author(author), _license_notice(license_notice) {}
 
-
         /// \brief Default destructor.
         ~clipper() = default;
-
 
         /**
          *  \brief  Sets the (application) name.
@@ -591,7 +552,6 @@ namespace CLI
             return _app_name;
         }
 
-
         /**
          *  \brief  Sets the description.
          *  \return Reference to itself.
@@ -608,7 +568,6 @@ namespace CLI
         std::string_view description() const noexcept {
             return _app_description;
         }
-
 
         /**
          *  \brief  Sets the version.
@@ -627,7 +586,6 @@ namespace CLI
             return _version;
         }
 
-
         /**
          *  \brief  Sets the author.
          *  \return Reference to itself.
@@ -644,7 +602,6 @@ namespace CLI
         std::string_view author() const noexcept {
             return _author;
         }
-
 
         /**
          *  \brief  Sets the license notice.
@@ -663,7 +620,6 @@ namespace CLI
             return _license_notice;
         }
 
-
         /**
          *  \brief  Sets the web link.
          *  \return Reference to itself.
@@ -681,7 +637,6 @@ namespace CLI
             return _web_link;
         }
 
-
         /**
          *  \brief  Adds an option of a given type.
          *  \tparam Tp Option (option value) type.
@@ -695,7 +650,6 @@ namespace CLI
             _options.emplace_back(std::make_unique<option<Tp>>(name));
             return *static_cast<option<Tp>*>(_options.back().get());
         }
-
 
         /**
          *  \brief  Adds an option of a given type.
@@ -714,7 +668,6 @@ namespace CLI
 
             return *static_cast<option<Tp>*>(_options.back().get());
         }
-
 
         /**
          *  \brief  Adds a \ref option< bool > "flag (option<bool>)".
@@ -745,7 +698,6 @@ namespace CLI
             return add_option<bool>(name, alt_name);
         }
 
-
         /**
          *  \brief  Sets/activates the help/version \ref option< bool > "flag (option<bool>)".
          * 
@@ -764,7 +716,6 @@ namespace CLI
             return _help_flag.hndl;
         }
 
-
         /// \copydoc help_flag
         option<bool>& version_flag(std::string_view name, std::string_view alt_name = "") {
             _version_flag.name = name;
@@ -772,7 +723,6 @@ namespace CLI
             _version_flag.hndl.doc("displays version information");
             return _version_flag.hndl;
         }
-
 
         /**
          *  \brief  Creates a documentation (man page, help) for the application.
@@ -804,8 +754,6 @@ namespace CLI
                 else
                     add_help(opt.get(), options);
             }
-
-
 
             std::ostringstream help;
 
@@ -840,7 +788,6 @@ namespace CLI
             return help.str();
         }
 
-
         /**
          *  \brief  Creates a version notice for the application.
          *  \return Version notice.
@@ -851,7 +798,6 @@ namespace CLI
                 .append(_version).append("\n")
                 .append(_author).append("\n");
         }
-
 
         /**
          *  \brief Allows the app to be used without any arguments.
@@ -865,7 +811,6 @@ namespace CLI
             _allow_no_args = true;
         }
 
-
         /**
          *  \brief Checks if no arguments were given.
          *  \return True if no arguments were given (always true before parsing), false if any arguments were given.
@@ -874,8 +819,6 @@ namespace CLI
         inline bool no_args() const {
             return _args_count == 1;
         }
-
-
 
         /**
          *  \brief Parses the command line input.
@@ -929,8 +872,6 @@ namespace CLI
             return !err;
         }
 
-
-
     private:
         /// \internal
         /// \brief Parses value of an option/flag and catches errors.
@@ -955,8 +896,6 @@ namespace CLI
                 args.pop();
             }
         }
-
-
 
     private:
       /* internal types */
@@ -986,7 +925,6 @@ namespace CLI
             { return not name.empty(); }
         };
 
-
         std::string_view _app_name;
         std::string_view _app_description;
         std::string_view _version;
@@ -1003,8 +941,6 @@ namespace CLI
     };
 
 } // namespace CLI
-
-
 
 
 /**
@@ -1026,7 +962,6 @@ namespace CLI::pred {
             std::is_floating_point_v<Tp>
         );
 
-
     /**
      * \brief Predicate that checks whether a value is between bounds (excludes the bounds).
      * \brief V1 and V2 must be of the same type that is also \ref numeric.
@@ -1043,7 +978,6 @@ namespace CLI::pred {
         static_assert(V1 < V2, "V1 must be less than V2."); 
         return V1 < val && val < V2;
     }
-
 
     /**
      * \brief Predicate that checks whether a value is between bounds (includes the bounds).
@@ -1062,7 +996,6 @@ namespace CLI::pred {
         return V1 <= val && val <= V2;
     }
 
-
     /**
      * \brief Predicate that checks whether a value is greater than a number (excludes the number).
      * \brief Type of V must be \ref numeric.
@@ -1077,7 +1010,6 @@ namespace CLI::pred {
     inline bool greater_than(const decltype(V)& val) {
         return V < val;
     }
-
 
     /**
      * \brief Predicate that checks whether a value is greater than a number (includes the number).
@@ -1094,7 +1026,6 @@ namespace CLI::pred {
         return V <= val;
     }
 
-
     /**
      * \brief Predicate that checks whether a value is less than a number (excludes the number).
      * \brief Type of V must be \ref numeric.
@@ -1110,7 +1041,6 @@ namespace CLI::pred {
         return V > val;
     }
 
-
     /**
      * \brief Predicate that checks whether a value is less than a number (includes the number).
      * \brief Type of V must be \ref numeric.
@@ -1125,5 +1055,4 @@ namespace CLI::pred {
     inline bool iless_than(const decltype(V)& val) {
         return V >= val;
     }
-
 } // namespace CLI::pred
