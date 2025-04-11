@@ -97,31 +97,21 @@ namespace CLI
 
 
     /**
+     *  \internal
      *  \brief Allows casting option pointers.
      *  \see option<Tp> option<bool> clipper
      */
     class option_base {
         friend class clipper;
     protected:
-        /// \internal
-        /// \brief Name of the type that the option holds.
-        std::string_view _vname;
-
-        /// \internal
-        /// \brief Documentation of the option.
-        std::string _doc;
-
-        /// \internal
-        /// \brief Stores information about optioin requirement.
-        bool _req { false };
-
-        /// \internal
-        /// \brief Holds the number of required options.
-        inline static std::size_t any_req { };
+        std::string_view _vname; ///< Name of the type that the option holds.
+        std::string _doc; ///< Documentation of the option.
+        bool _req { false }; ///< Stores information about optioin requirement.
+        
+        inline static std::size_t any_req { }; ///< Holds the number of required options.
 
     protected:
         /**
-         * \internal
          * \brief Returns option synopsis in format: alt_name(or name) [value_info].
          * \return Option synopsis
          */
@@ -129,7 +119,6 @@ namespace CLI
         { return std::string(alt_name) + " " + value_info(); }
         
         /**
-         * \internal
          * \brief Creates detailed option synopsis in format: [alt_name], name [value_info].
          * \return Detailed option synopsis
          */
@@ -137,18 +126,15 @@ namespace CLI
         { return (alt_name.empty() ? std::string() : std::string(alt_name) + ", ") + std::string(name) + " " + value_info(); }
         
         /**
-         * \internal
          * \brief Creates option value info.
          * \return Option value info (empty by default)
          */
         virtual std::string value_info() const noexcept
         { return ""; };
 
-        /// \internal Converts and assigns a value to an option.
         /// \brief Creates option value info.
         virtual void assign(std::string_view) = 0;
 
-        /// \internal Converts and assigns a value to an option.
         /// \brief Creates option value info.
         virtual void operator=(std::string_view) = 0;
 
