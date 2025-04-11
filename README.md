@@ -27,7 +27,7 @@
 ## About
 
 Clipper is a simple, header-only library that handles commad line arguments and parsing.  
-(This library requires C++23 support)
+(This library requires C++20 support)
 
 It is a learning project, that I took on to improve my C++ 📈.
 <br>
@@ -176,7 +176,7 @@ int main(CLI::arg_count argc, CLI::args argv) {
         .doc("Output length")
         .set("number", length)
         .req()
-        .require(">10", CLI::greater_than<10uz>);
+        .require(">10", CLI::greater_than<10ull>);
 
     if (not cli.parse(argc, argv)) {
         for (auto& i: cli.wrong)
