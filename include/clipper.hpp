@@ -23,7 +23,6 @@
 #include <unordered_map>
 #include <queue>
 #include <vector>
-#include <set>
 #include <string>
 #include <string_view>
 #include <charconv>
@@ -236,7 +235,7 @@ namespace CLI
         template<typename... Args>
         option& match(Args&&... val) {
             static_assert((std::is_convertible_v<std::decay_t<Args>, Tp> && ...), "All arguments must be of type Tp or convertible to type Tp");
-            (_match_list.insert(std::forward<Args>(val)), ... );
+            (_match_list.emplace_back(std::forward<Args>(val)), ... );
             return *this;
         }
 
@@ -336,7 +335,7 @@ namespace CLI
          */
         inline void assign(std::string_view val) override {
             if constexpr (is_string<Tp>) {
-                *_ptr = val;
+                *_ptr = val;    // have to create that value before validating it
                 if (!validate(*_ptr))
                     throw std::logic_error("Value is not allowed");
             }
@@ -371,7 +370,7 @@ namespace CLI
          *  \param val Assigned value.
          */
         inline void operator=(Tp val) {
-            if (_match_list.empty() || _match_list.contains(val)) {
+            if (validate(val)) {
                 *_ptr = val;
             }
             else {
@@ -387,17 +386,27 @@ namespace CLI
          *  \see match() require()
          */
         bool validate(const Tp& val) const {
+            using ml_iter = std::vector<Tp>::const_iterator;
+            bool is_match_list_allowed = _match_list.empty(); // if is emtpy then all values are allowed
+
+            for (ml_iter i = _match_list.begin(); i < _match_list.end(); i++) { // if _match_list empty it won't execute
+                if (*i == val) {                                                // and all values are allowed (^look up^)
+                    is_match_list_allowed = true;
+                    break;
+                }
+            }
+
             if (nullptr == _match_func)
-                return _match_list.empty() || _match_list.contains(val);
-                else
-                return _match_func(val) && (_match_list.empty() || _match_list.contains(val));
+                return is_match_list_allowed;
+            else
+                return _match_func(val) && is_match_list_allowed;
         }
 
     private:
         Tp* _ptr = nullptr;         ///< Pointer where to write parsed value to.
         // std::string _match_func_doc; ///< Documentation of the requirements of a \ref predicate function i.e. [0; 1], length < 10, lower case
         predicate _match_func = nullptr; ///< Function that checks wheather the value is allowed.
-        std::set<Tp> _match_list;   ///< Contains allowed values (if empty all viable values are allowed).
+        std::vector<Tp> _match_list;   ///< Contains allowed values (if empty all viable values are allowed).
     };
 
 
