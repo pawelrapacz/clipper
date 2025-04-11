@@ -175,14 +175,12 @@ namespace CLI
      *  \brief  Contains option properties.
      *  \tparam Tp Option (option value) type.
      *  \see    option<bool> option_types clipper clipper::add_option()
-     *  \anchor opt
      */
     template<option_types Tp>
     class option : public option_base {
         friend class clipper;
     public:
         /// \brief Type of function that checks whether the given value meets some requirements
-        /// \anchor optPredicate
         using predicate = bool (*)(const Tp&);
         using option_base::doc;
 
@@ -258,8 +256,7 @@ namespace CLI
          *  \param  doc Description of the requirements of the given function, i.e. [0; 1], length < 10, lower case.
          *  \param  pred Function of type \ref predicate that checks whether the given value is valid (meets some requirements).
          *  \return Reference to itself.
-         *  \see predicate CLI::pred
-         *  \anchor optValidate
+         *  \see predicate CLI::pred require()
          */
         option& validate(std::string_view doc, predicate pred) {
             _doc.append(" ").append(doc);
@@ -272,8 +269,7 @@ namespace CLI
          *  \param  doc Description of the requirements of the given function, i.e. [0; 1], length < 10, lower case.
          *  \param  pred Function of type \ref predicate that checks whether the given value is valid (meets some requirements).
          *  \return Reference to itself.
-         *  \see predicate validate() CLI::pred
-         *  \anchor optRequire
+         *  \see predicate CLI::pred validate()
          */
         option& require(std::string_view doc, predicate pred) {
             return validate(doc, pred);
@@ -926,119 +922,97 @@ namespace CLI
         std::vector<std::string> _wrong; ///< Contains all errors encountered while parsing.
     };
 
+
+    /**
+     * \brief Inline namespace that contains template predicates for \ref option<Tp> "options".
+     * \see numeric option<Tp> option<Tp>::predicate option<Tp>::validate()
+     */
+    inline namespace pred {
+        /**
+         * \brief Allowed predicate types.
+         * \see option<Tp>
+         */
+        template<typename Tp>
+        concept numeric =
+            std::negation_v<std::is_same<Tp, bool>> && (
+                std::is_integral_v<Tp>       ||
+                std::is_floating_point_v<Tp>
+            );
+
+        /**
+         * \brief Predicate that checks whether a value is between bounds (excludes the bounds).
+         * \brief V1 and V2 must be of the same type that is also \ref numeric.
+         * \tparam V1 First (smaller) bound (compile-time constant of same type as V2).
+         * \tparam V2 Second (greater) bound (compile-time constant of same type as V1).
+         * \see numeric option<Tp> option<Tp>::predicate option<Tp>::validate()
+         */
+        template<auto V1, auto V2>
+            requires numeric<decltype(V1)> && std::is_same_v<decltype(V1), decltype(V2)>
+        inline bool between(const decltype(V1)& val) {
+            static_assert(V1 < V2, "V1 must be less than V2."); 
+            return V1 < val && val < V2;
+        }
+
+        /**
+         * \brief Predicate that checks whether a value is between bounds (includes the bounds).
+         * \brief V1 and V2 must be of the same type that is also \ref numeric.
+         * \tparam V1 First (smaller) bound (compile-time constant of same type as V2).
+         * \tparam V2 Second (greater) bound (compile-time constant of same type as V1).
+         * \see numeric option<Tp> option<Tp>::predicate option<Tp>::validate()
+         */
+        template<auto V1, auto V2>
+            requires numeric<decltype(V1)> && std::is_same_v<decltype(V1), decltype(V2)>
+        inline bool ibetween(const decltype(V1)& val) {
+            static_assert(V1 < V2, "V1 must be less than V2.");
+            return V1 <= val && val <= V2;
+        }
+
+        /**
+         * \brief Predicate that checks whether a value is greater than a number (excludes the number).
+         * \brief Type of V must be \ref numeric.
+         * \tparam V number that the given value will be compared to.
+         * \see numeric option<Tp> option<Tp>::predicate option<Tp>::validate()
+         */
+        template<auto V>
+            requires numeric<decltype(V)>
+        inline bool greater_than(const decltype(V)& val) {
+            return V < val;
+        }
+
+        /**
+         * \brief Predicate that checks whether a value is greater than a number (includes the number).
+         * \brief Type of V must be \ref numeric.
+         * \tparam V number that the given value will be compared to.
+         * \see numeric option<Tp> option<Tp>::predicate option<Tp>::validate()
+         */
+        template<auto V>
+            requires numeric<decltype(V)>
+            inline bool igreater_than(const decltype(V)& val) {
+            return V <= val;
+        }
+
+        /**
+         * \brief Predicate that checks whether a value is less than a number (excludes the number).
+         * \brief Type of V must be \ref numeric.
+         * \tparam V number that the given value will be compared to.
+         * \see numeric option<Tp> option<Tp>::predicate option<Tp>::validate()
+         */
+        template<auto V>
+            requires numeric<decltype(V)>
+        inline bool less_than(const decltype(V)& val) {
+            return V > val;
+        }
+
+        /**
+         * \brief Predicate that checks whether a value is less than a number (includes the number).
+         * \brief Type of V must be \ref numeric.
+         * \tparam V number that the given value will be compared to.
+         * \see numeric option<Tp> option<Tp>::predicate option<Tp>::validate()
+         */
+        template<auto V>
+            requires numeric<decltype(V)>
+        inline bool iless_than(const decltype(V)& val) {
+            return V >= val;
+        }
+    } // namespace pred
 } // namespace CLI
-
-
-/**
- * \brief Namespace that contains template predicates for \ref opt "options".
- * \see numeric 
- *      \ref opt "option"
- *      \ref optPredicate "option::predicate"
- *      \ref optValidate "option::validate()"
- */
-namespace CLI::pred {
-    /**
-     * \brief Allowed predicate types.
-     * \see \ref opt "option"
-     */
-    template<typename Tp>
-    concept numeric =
-        std::negation_v<std::is_same<Tp, bool>> && (
-            std::is_integral_v<Tp>       ||
-            std::is_floating_point_v<Tp>
-        );
-
-    /**
-     * \brief Predicate that checks whether a value is between bounds (excludes the bounds).
-     * \brief V1 and V2 must be of the same type that is also \ref numeric.
-     * \tparam V1 First (smaller) bound (compile-time constant of same type as V2).
-     * \tparam V2 Second (greater) bound (compile-time constant of same type as V1).
-     * \see numeric 
-     *      \ref opt "option"
-     *      \ref optPredicate "option::predicate"
-     *      \ref optValidate "option::validate()"
-     */
-    template<auto V1, auto V2>
-        requires numeric<decltype(V1)> && std::is_same_v<decltype(V1), decltype(V2)>
-    inline bool between(const decltype(V1)& val) {
-        static_assert(V1 < V2, "V1 must be less than V2."); 
-        return V1 < val && val < V2;
-    }
-
-    /**
-     * \brief Predicate that checks whether a value is between bounds (includes the bounds).
-     * \brief V1 and V2 must be of the same type that is also \ref numeric.
-     * \tparam V1 First (smaller) bound (compile-time constant of same type as V2).
-     * \tparam V2 Second (greater) bound (compile-time constant of same type as V1).
-     * \see numeric 
-     *      \ref opt "option"
-     *      \ref optPredicate "option::predicate"
-     *      \ref optValidate "option::validate()"
-     */
-    template<auto V1, auto V2>
-        requires numeric<decltype(V1)> && std::is_same_v<decltype(V1), decltype(V2)>
-    inline bool ibetween(const decltype(V1)& val) {
-        static_assert(V1 < V2, "V1 must be less than V2.");
-        return V1 <= val && val <= V2;
-    }
-
-    /**
-     * \brief Predicate that checks whether a value is greater than a number (excludes the number).
-     * \brief Type of V must be \ref numeric.
-     * \tparam V number that the given value will be compared to.
-     * \see numeric 
-     *      \ref opt "option"
-     *      \ref optPredicate "option::predicate"
-     *      \ref optValidate "option::validate()"
-     */
-    template<auto V>
-        requires numeric<decltype(V)>
-    inline bool greater_than(const decltype(V)& val) {
-        return V < val;
-    }
-
-    /**
-     * \brief Predicate that checks whether a value is greater than a number (includes the number).
-     * \brief Type of V must be \ref numeric.
-     * \tparam V number that the given value will be compared to.
-     * \see numeric 
-     *      \ref opt "option"
-     *      \ref optPredicate "option::predicate"
-     *      \ref optValidate "option::validate()"
-     */
-    template<auto V>
-        requires numeric<decltype(V)>
-    inline bool igreater_than(const decltype(V)& val) {
-        return V <= val;
-    }
-
-    /**
-     * \brief Predicate that checks whether a value is less than a number (excludes the number).
-     * \brief Type of V must be \ref numeric.
-     * \tparam V number that the given value will be compared to.
-     * \see numeric 
-     *      \ref opt "option"
-     *      \ref optPredicate "option::predicate"
-     *      \ref optValidate "option::validate()"
-     */
-    template<auto V>
-        requires numeric<decltype(V)>
-    inline bool less_than(const decltype(V)& val) {
-        return V > val;
-    }
-
-    /**
-     * \brief Predicate that checks whether a value is less than a number (includes the number).
-     * \brief Type of V must be \ref numeric.
-     * \tparam V number that the given value will be compared to.
-     * \see numeric 
-     *      \ref opt "option"
-     *      \ref optPredicate "option::predicate"
-     *      \ref optValidate "option::validate()"
-     */
-    template<auto V>
-        requires numeric<decltype(V)>
-    inline bool iless_than(const decltype(V)& val) {
-        return V >= val;
-    }
-} // namespace CLI::pred

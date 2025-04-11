@@ -169,13 +169,14 @@ int main(CLI::arg_count argc, CLI::args argv) {
     cli.add_option<double>("--myvalue")
         .doc("My value")
         .set("value", myvalue, .5)
-        .validate("(0; 1)", CLI::pred::between<0., 1.>);
+        .validate("(0; 1)", CLI::between<0., 1.>); // could be: CLI::pred::between<0., 1.>
+                                                   // if you want to be specific
 
     cli.add_option<std::size_t>("--length", "-l")
         .doc("Output length")
         .set("number", length)
         .req()
-        .require(">10", CLI::pred::greater_than<10uz>);
+        .require(">10", CLI::greater_than<10uz>);
 
     if (not cli.parse(argc, argv)) {
         for (auto& i: cli.wrong)
@@ -321,14 +322,14 @@ It is a template class that allows `integral types`, `floating point types`, `st
 ### predicates
 Predicate is a function that allows you to set custom restrictions on option values. These are set with the `validate()` or `require()` methods.
 
-`CLI::pred` namespace contains predefined template predicates to validate numeric options (without `std::string`).
+`CLI::pred` namespace contains a set of predefined template predicates to validate numeric options. This namespace is marked as inline so all of predicate functions can be accessed directly trough the CLI namespace.
 Type of a predicate is strictly set for each option variant: `bool (*)(const Tp&)` where Tp is the type of the option (template argument).
 That`s why when using these predefined predications you have to be precise with the  types of given values:
 ```cpp
-CLI::pred::between<1, 2>;       // int
-CLI::pred::ibetween<1ul, 2ul>;  // unsigned long
-CLI::pred::less_than<100.0l>;   // long double
-CLI::pred::igreater_than<5.0f>; // float
+CLI::between<1, 2>;       // int
+CLI::ibetween<1ul, 2ul>;  // unsigned long
+CLI::less_than<100.0l>;   // long double
+CLI::igreater_than<5.0f>; // float
 ...
 ```
 
