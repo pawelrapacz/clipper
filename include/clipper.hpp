@@ -355,11 +355,7 @@ namespace CLI
             }
         }
 
-        /**
-         *  \internal
-         *  \brief Converts and assigns a value to an option.
-         *  \param val Value to assign.
-         */
+        /// \copydoc assign()
         inline void operator=(std::string_view val) override {
             assign(val);
         }
@@ -466,25 +462,22 @@ namespace CLI
     protected:
         /**
          *  \internal
-         *  \brief Converts and assigns a value to an option.
-         *  \param val Value to assign.
+         *  \brief Converts and assigns a value to an option (sets the option value to true).
+         *  \param val Value to assign. (ignored)
          */
-        inline void assign(std::string_view val) override {
+        inline void assign(std::string_view /* val */) override {
             *_ptr = true;
         }
 
-        /**
-         *  \internal
-         *  \brief Converts and assigns a value to an option.
-         *  \param val Value to assign.
-         */
-        inline void operator=(std::string_view val) override {
+        /// \copydoc assign()
+        inline void operator=(std::string_view /* val */) override {
             *_ptr = true;
         }
 
         /**
          *  \internal
          *  \brief Assigns a value to an \ref option< bool > "flag (option<bool>)".
+         *  \param val Value to assign.
          */
         inline void operator=(bool val) {
             *_ptr = val;
