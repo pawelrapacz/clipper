@@ -110,7 +110,43 @@ namespace CLI
         
         inline static std::size_t any_req { }; ///< Holds the number of required options.
 
-    protected:
+    public:
+        const std::string_view name; ///< Reference to name of the option.
+        const std::string_view alt_name; ///< Reference to alternative name of the option.
+
+    public:
+        /// \brief Constructs a new instance and sets its name reference.
+        /// \brief Name and alternative name are the same.
+        option_base(std::string_view nm)
+            : name(nm), alt_name(nm) {}
+
+        /// \brief Constructs a new instance and sets its name and alternative name reference.
+        option_base(std::string_view nm, std::string_view anm)
+            : name(nm), alt_name(anm) {}
+
+        /// \brief Virtual default constructor.
+        virtual ~option_base() = default;
+
+        /// \brief Creates option value info.
+        virtual void assign(std::string_view) = 0;
+
+        /// \brief Creates option value info.
+        virtual void operator=(std::string_view) = 0;
+
+        /**
+         *  \brief  Accesses option documentation.
+         *  \return Documentation reference.
+         */
+        const std::string& doc() const noexcept
+        { return _doc; }
+
+        /**
+         *  \brief  Checks whether the option is required.
+         *  \return True if required, false othrerwise.
+         */
+        bool req() const noexcept
+        { return _req; }
+
         /**
          *  \brief  Checks whether the option was set.
          *  \return True if the option was set by the user, false othrerwise.
@@ -130,7 +166,7 @@ namespace CLI
          * \return Detailed option synopsis
          */
         std::string detailed_synopsis() const noexcept
-        { return (alt_name.empty() ? std::string() : std::string(alt_name) + ", ") + std::string(name) + " " + value_info(); }
+        { return (alt_name == name ? std::string() : std::string(alt_name) + ", ") + std::string(name) + " " + value_info(); }
         
         /**
          * \brief Creates option value info.
@@ -138,43 +174,6 @@ namespace CLI
          */
         virtual std::string value_info() const noexcept
         { return ""; };
-
-        /// \brief Creates option value info.
-        virtual void assign(std::string_view) = 0;
-
-        /// \brief Creates option value info.
-        virtual void operator=(std::string_view) = 0;
-
-    public:
-        const std::string_view name; ///< Reference to name of the option.
-        const std::string_view alt_name; ///< Reference to alternative name of the option.
-
-    public:
-        /// \brief Constructs a new instance and sets its name reference.
-        /// \brief Name and alternative name are the same.
-        option_base(std::string_view nm)
-            : name(nm) {}
-
-        /// \brief Constructs a new instance and sets its name and alternative name reference.
-        option_base(std::string_view nm, std::string_view anm)
-            : name(nm), alt_name(anm) {}
-
-        /// \brief Virtual default constructor.
-        virtual ~option_base() = default;
-
-        /**
-         *  \brief  Accesses option documentation.
-         *  \return Documentation reference.
-         */
-        const std::string& doc() const noexcept
-        { return _doc; }
-
-        /**
-         *  \brief  Checks whether the option is required.
-         *  \return True if required, false othrerwise.
-         */
-        bool req() const noexcept
-        { return _req; }
     };
 
 
@@ -335,7 +334,6 @@ namespace CLI
             }
         }
 
-    protected:
         /**
          *  \internal
          *  \brief Converts and assigns a value to an option.
@@ -384,6 +382,7 @@ namespace CLI
             }
         }
         
+    protected:
         /**
          *  \internal
          *  \brief Validates a given value with an option requirements.
@@ -469,7 +468,6 @@ namespace CLI
             return *this;
         }
 
-    protected:
         /**
          *  \internal
          *  \brief Converts and assigns a value to an option (sets the option value to true).
