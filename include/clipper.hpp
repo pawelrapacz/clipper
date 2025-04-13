@@ -106,10 +106,18 @@ namespace CLI
         std::string_view _vname; ///< Name of the type that the option holds.
         std::string _doc; ///< Documentation of the option.
         bool _req { false }; ///< Stores information about optioin requirement.
+        bool _is_set { false }; ///< True if the option was set by the user.
         
         inline static std::size_t any_req { }; ///< Holds the number of required options.
 
     protected:
+        /**
+         *  \brief  Checks whether the option was set.
+         *  \return True if the option was set by the user, false othrerwise.
+         */
+        bool is_set() const noexcept
+        { return _is_set; }
+
         /**
          * \brief Returns option synopsis in format: alt_name(or name) [value_info].
          * \return Option synopsis
@@ -334,6 +342,7 @@ namespace CLI
          *  \param val Value to assign.
          */
         inline void assign(std::string_view val) override {
+            _is_set = true;
             if constexpr (is_string<Tp>) {
                 *_ptr = val;    // have to create that value before validating it
                 if (!validate(*_ptr))
@@ -366,6 +375,7 @@ namespace CLI
          *  \param val Assigned value.
          */
         inline void operator=(Tp val) {
+            _is_set = true;
             if (validate(val)) {
                 *_ptr = val;
             }
@@ -726,10 +736,10 @@ namespace CLI
             std::ostringstream flags;
             std::ostringstream options;
             
-            if (_help_flag.is_set())
+            if (_help_flag.is_used())
                 add_help(&_help_flag.hndl, flags);
 
-            if (_version_flag.is_set())
+            if (_version_flag.is_used())
                 add_help(&_version_flag.hndl, flags);
 
             for (auto& opt : _options) {
@@ -810,15 +820,15 @@ namespace CLI
          *  \param argv Arguments.
          *  \return True if arguments were parsed successfully, false otherwise.
          */
-        bool parse(int argc, argv_ptr argv) { /* <-- beautiful */
+        inline bool parse(int argc, argv_ptr argv) {
             _args_count = argc;
             bool err = false;
+            auto req_count = option_base::any_req;
         
 
             if (_allow_no_args && argc == 1)
                 return !err;
 
-            auto req_count = option_base::any_req;
             std::queue<std::string_view> args;
             for (int i = 1; i < argc; i++) // argv[0] is the command name, it is meant to be omitted
                 args.push(argv[i]);
@@ -836,7 +846,7 @@ namespace CLI
 
             while (not args.empty()) {
                 if (_names.contains(args.front())) {
-                    if (_options[_names[args.front()]]->req())
+                    if (_options[_names[args.front()]]->req() && not _options[_names[args.front()]]->is_set())
                         req_count--;
 
                     set_option(args, err); // it pops the option and its value
@@ -905,7 +915,7 @@ namespace CLI
              * \brief Checks whether the option is set (name is not empty).
              * \return True if opiton is set, flase otherwise.
              */
-            bool is_set() const noexcept
+            bool is_used() const noexcept
             { return not name.empty(); }
         };
 
