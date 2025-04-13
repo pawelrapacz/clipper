@@ -146,8 +146,8 @@ namespace CLI
         virtual void operator=(std::string_view) = 0;
 
     public:
-        std::string_view name; ///< Reference to name of the option.
-        std::string_view alt_name; ///< Reference to alternative name of the option.
+        const std::string_view name; ///< Reference to name of the option.
+        const std::string_view alt_name; ///< Reference to alternative name of the option.
 
     public:
         /// \brief Constructs a new instance and sets its name reference.
