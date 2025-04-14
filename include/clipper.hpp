@@ -511,8 +511,6 @@ namespace CLI
     class clipper {
         using argv_ptr = const char* const* const; ///< Type of an array with arguments pointer.
     public:
-        const std::vector<std::string>& wrong = _wrong; ///< Contains all errors encountered while parsing.
-
         /// \brief Default constructor.
         clipper() = default;
 
@@ -863,6 +861,13 @@ namespace CLI
 
             return !err;
         }
+
+        /**
+         *  \brief Gets a list of parsing errors.
+         *  \return Reference to a vector that contains all parsing errors.
+         */
+        const std::vector<std::string>& wrong() const noexcept
+        { return _wrong; }
 
     private:
         /// \internal

@@ -117,15 +117,15 @@ To display help or version info you can do this:
 std::cout << cli.make_help();
 std::cout << cli.make_version_info();
 ```
-
-`clipper` class gives access to the `wrong` member which is a `const std::vector<std::string>&` and contains any parsing errors like:
+ 
+The `wrong()` function returns a `const std::vector<std::string>&` that contains parsing errors like:
 - Unkonown argument
 - Missing required argument
 - Missing option value
 - Value is not allowed
 
 ```cpp
-std::cout << cli.wrong.front();
+std::cout << cli.wrong().front();
 ```
 <br>
 
@@ -179,7 +179,7 @@ int main(CLI::arg_count argc, CLI::args argv) {
         .require(">10", CLI::greater_than<10ull>);
 
     if (not cli.parse(argc, argv)) {
-        for (auto& i: cli.wrong)
+        for (auto& i: cli.wrong())
             std::cout << i << "\n";
         return 1;
     }
@@ -280,7 +280,7 @@ the application, options and flags.
 | `allow_no_args()`                                    | allows the app to be used without any arguments                | `void`                                           |
 | `no_args()`                                          | checks if no arguments were given                              | `bool`                                           |
 | `parse(argc, argv)`                                  | parses command line arguments                                  | `bool` (`true` if successful, `false` otherwise) |
-| `wrong`                                              | `const std::vector<std::string>&` that contains parsing errors |                                                  |
+| `wrong()`                                            | gets a list of parsing errors                                  | `const std::vector<std::string>&`                |
 
 <br>
 
