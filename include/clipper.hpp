@@ -475,13 +475,15 @@ namespace CLI
          */
         inline void assign(std::string_view /* val */) override {
             *_ptr = true;
+            _is_set = true;
         }
-
+        
         /// \copydoc assign()
         inline void operator=(std::string_view /* val */) override {
             *_ptr = true;
+            _is_set = true;
         }
-
+        
         /**
          *  \internal
          *  \brief Assigns a value to an \ref option< bool > "flag (option<bool>)".
@@ -489,6 +491,7 @@ namespace CLI
          */
         inline void operator=(bool val) {
             *_ptr = val;
+            _is_set = true;
         }
 
     private:
