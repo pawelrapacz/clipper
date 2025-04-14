@@ -94,7 +94,6 @@ namespace CLI
 
     class clipper;
 
-
     /**
      *  \internal
      *  \brief Allows casting option pointers.
@@ -323,6 +322,20 @@ namespace CLI
                 else if constexpr (std::is_same_v<Tp, char>) {
                     for (Tp i : _match_list)
                         list.append(1, i).push_back(' ');
+                }
+                else if constexpr (std::is_floating_point_v<Tp>) {
+                    for (Tp i : _match_list) {
+                        // removeing zeroes at the end
+                        std::string str = std::to_string(i);
+                        std::size_t pos = str.size() - 1;  // first nonmeaning zero position
+                        while (str[pos] == '0' && pos > 0)
+                            pos--;
+                        
+                        if (str[pos] == '.')
+                            pos--;
+
+                        list.append(str.substr(0, pos + 1)).push_back(' ');
+                    }
                 }
                 else {
                     for (Tp i : _match_list)

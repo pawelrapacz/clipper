@@ -29,6 +29,7 @@ add_executable(
     tests
     tests/PredicateTest.cpp
     tests/OptionTest.cpp
+    tests/ClipperTest.cpp
 )
 
 target_link_libraries(
