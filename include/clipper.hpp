@@ -107,8 +107,6 @@ namespace CLI
         bool _req { false }; ///< Stores information about optioin requirement.
         bool _is_set { false }; ///< True if the option was set by the user.
         
-        inline static std::size_t any_req { }; ///< Holds the number of required options.
-
     public:
         const std::string_view name; ///< Reference to name of the option.
         const std::string_view alt_name; ///< Reference to alternative name of the option.
@@ -296,7 +294,6 @@ namespace CLI
          */
         option& req() {
             _req = true;
-            any_req++;
             return *this;
         }
 
@@ -477,7 +474,6 @@ namespace CLI
          */
         option& req() {
             _req = true;
-            any_req++;
             return *this;
         }
 
@@ -835,7 +831,7 @@ namespace CLI
         inline bool parse(int argc, argv_ptr argv) {
             _args_count = argc;
             bool err = false;
-            auto req_count = option_base::any_req;
+            auto req_count = count_req();
         
 
             if (_allow_no_args && argc == 1)
@@ -908,6 +904,17 @@ namespace CLI
                 }
                 args.pop();
             }
+        }
+
+        /// \internal
+        /// \brief Counts required options/flags.
+        inline std::size_t count_req() const {
+            std::size_t count = 0;
+            for (auto& i : _options)
+                if (i->req())
+                    count++;
+
+            return count;
         }
 
     private:
