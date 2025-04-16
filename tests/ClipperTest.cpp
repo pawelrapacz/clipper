@@ -14,7 +14,7 @@ protected:
         cli.add_option<std::string>("--encoding", "-e").set("", e_v);
         cli.add_option<double>("--myvalue", "-m").set("", m_v);
         cli.add_option<std::size_t>("-l").set("", l_v);
-        cli.add_flag("--verbose", "-v").set(f_v);
+        cli.add_flag("--verbose", "-v").set(v_v);
         cli.add_flag("-s").set(s_v);
         cli.add_flag("-h").set(h_v);
 
@@ -38,21 +38,62 @@ protected:
     std::size_t l_v;
 
     clipper cli;
+};
 
-    constexpr static const char* empty[] = { "app", nullptr };
 
-    // G is good E is error
-    constexpr static const char* setG1[] = { // only required options
+// Should evaluate to true
+TEST_F(ClipperTest, ParsingRequiredOnly) {
+    const char* argv[] = { 
         "app",
-        "-i", "input.txt",
-        "-o", "output.txt",
-        "--count", "10",
-        "-f",
+        "-i", "in.txt",
+        "-o", "out.txt",
+        "-c", "5",
+        "-f", 
         nullptr
     };
-    constexpr static arg_count sizeG1 = 8;
+    EXPECT_NO_THROW({
+        ASSERT_TRUE(cli.parse(8, argv)) << ParsingWrong();
+    });
+    EXPECT_EQ(i_v, "in.txt");
+    EXPECT_EQ(o_v, "out.txt");
+    EXPECT_EQ(c_v, 5);
+    EXPECT_TRUE(f_v);
+    EXPECT_FALSE(help_v);
+    EXPECT_FALSE(version_v);
+}
 
-    constexpr static const char* setG2[] = { // some options repeated
+TEST_F(ClipperTest, ParsingAllOptionsSet) {
+    const char* argv[] = {
+        "app",
+        "-i", "file.txt",
+        "-o", "out.txt", 
+        "-c", "42",
+        "-f",
+        "--name", "TestName",
+        "--encoding", "utf8",
+        "--myvalue", "3.14",
+        "-l", "64",
+        "--verbose",
+        "-s",
+        "-h",
+        nullptr
+    };
+    EXPECT_NO_THROW({
+        ASSERT_TRUE(cli.parse(19, argv)) << ParsingWrong();
+    });
+    EXPECT_EQ(n_v, "TestName");
+    EXPECT_EQ(e_v, "utf8");
+    EXPECT_DOUBLE_EQ(m_v, 3.14);
+    EXPECT_EQ(l_v, 64u);
+    EXPECT_TRUE(v_v);
+    EXPECT_TRUE(s_v);
+    EXPECT_TRUE(h_v);
+    EXPECT_FALSE(help_v);
+    EXPECT_FALSE(version_v);
+}
+
+TEST_F(ClipperTest, ParsingRepeatedOptions) {
+    const char* argv[] = { // some options repeated
         "app",
         "-i", "input.txt",
         "-o", "output.txt",
@@ -63,9 +104,20 @@ protected:
         "-h",
         nullptr
     };
-    constexpr static arg_count sizeG2 = 13;
+    EXPECT_NO_THROW({
+        ASSERT_TRUE(cli.parse(13, argv)) << ParsingWrong();
+    });
+    EXPECT_EQ(i_v, "input.txt");
+    EXPECT_EQ(o_v, "output2.txt");
+    EXPECT_EQ(c_v, 145);
+    EXPECT_TRUE(f_v);
+    EXPECT_TRUE(h_v);
+    EXPECT_FALSE(help_v);
+    EXPECT_FALSE(version_v);
+}
 
-    constexpr static const char* setG3[] = { // all options (and repeated)
+TEST_F(ClipperTest, ParsingAllOptionsSomeRepeated) {
+    const char* argv[] = { // all options (and repeated)
         "app",
         "-e", "latin1",
         "--input", "input.txt",
@@ -89,29 +141,135 @@ protected:
         "-l", "134",
         nullptr
     };
-    constexpr static arg_count sizeG3 = 34;
+    EXPECT_NO_THROW({
+        ASSERT_TRUE(cli.parse(34, argv));
+    });
+    EXPECT_EQ(i_v, "input2.txt");
+    EXPECT_EQ(o_v, "output2.txt");
+    EXPECT_EQ(c_v, 10);
+    EXPECT_EQ(l_v, 134);
+    EXPECT_EQ(n_v, "abc");
+    EXPECT_EQ(e_v, "utf8");
+    EXPECT_DOUBLE_EQ(m_v, 304.45);
+    EXPECT_TRUE(f_v);
+    EXPECT_TRUE(h_v);
+    EXPECT_TRUE(v_v);
+    EXPECT_TRUE(s_v);
+    EXPECT_FALSE(help_v);
+    EXPECT_FALSE(version_v);
+}
 
-    constexpr static const char* setE1[] = { // no required options
+TEST_F(ClipperTest, ParsingAllOptionsNoRepeats) {
+    const char* argv[] = {
         "app",
-        "-n", "aa",
+        "-i", "input.txt",
+        "-o", "out.txt",
+        "-c", "42",
+        "--flag",
+        "--name", "example",
+        "--encoding", "ascii",
+        "--myvalue", "123.456",
+        "-l", "789",
+        "--verbose",
+        "-s",
         "-h",
-        "--myvalue", "10.3",
         nullptr
     };
-    constexpr static arg_count sizeE1 = 6;
+    EXPECT_NO_THROW({
+        ASSERT_TRUE(cli.parse(19, argv)) << ParsingWrong();
+    });
+    EXPECT_EQ(i_v, "input.txt");
+    EXPECT_EQ(o_v, "out.txt");
+    EXPECT_EQ(c_v, 42);
+    EXPECT_EQ(n_v, "example");
+    EXPECT_EQ(e_v, "ascii");
+    EXPECT_DOUBLE_EQ(m_v, 123.456);
+    EXPECT_EQ(l_v, 789);
+    EXPECT_TRUE(f_v);
+    EXPECT_TRUE(v_v);
+    EXPECT_TRUE(s_v);
+    EXPECT_TRUE(h_v);
+    EXPECT_FALSE(help_v);
+    EXPECT_FALSE(version_v);
+}
 
-    constexpr static const char* setE2[] = { // no required options
+TEST_F(ClipperTest, ParsingHelp) {
+    const char* argv[] = { "app", "--help", nullptr };
+    EXPECT_NO_THROW({
+        ASSERT_TRUE(cli.parse(2, argv)) << ParsingWrong();
+    });
+        EXPECT_TRUE(help_v);
+        EXPECT_FALSE(version_v);
+}
+
+TEST_F(ClipperTest, ParsingVersion) {
+    const char* argv[] = { "app", "--version", nullptr };
+    EXPECT_NO_THROW({
+        ASSERT_TRUE(cli.parse(2, argv)) << ParsingWrong();
+    });
+        EXPECT_FALSE(help_v);
+        EXPECT_TRUE(version_v);
+}
+
+// Should evaluate to false
+TEST_F(ClipperTest, ParsingMissingRequiredOptions) {
+    const char* argv[] = {
+        "app",
+        "--name", "missing",
+        nullptr
+    };
+    EXPECT_NO_THROW({
+        EXPECT_FALSE(cli.parse(3, argv));
+    });
+}
+
+TEST_F(ClipperTest, ParsingMissingRequiredOptionInput) {
+    const char* argv[] = { // missing required (--input)
+        "app",
+        "-e", "latin1",
+        "-h",
+        "--flag",
+        "-o", "output.txt",
+        "-n", "cba",
+        "--count",
+        "-l", "1034",
+        "-s",
+        "-f",
+        "-m",
+        "-o", "output2.txt",
+        "--verbose",
+        "--count", "10",
+        "-f",
+        "--name", "abc",
+        "--encoding", "utf8",
+        "-v",
+        "-l", "134",
+        nullptr
+    };
+    EXPECT_NO_THROW({
+        EXPECT_FALSE(cli.parse(28, argv));
+    });
+}
+
+TEST_F(ClipperTest, ParsingMissingOnlyRequiredOptions) {
+    const char* argv[] = { // no required options
         "app",
         "-n", "aa",
+        "--encoding", "utf8",
+        "-v",
         "-h",
         "--myvalue", "10.3",
         "-s",
         "-l", "123",
         nullptr
     };
-    constexpr static arg_count sizeE2 = 9;
+    EXPECT_NO_THROW({
+        EXPECT_FALSE(cli.parse(12, argv));
+    });
+}
 
-    constexpr static const char* setE3[] = { // options missing values
+TEST_F(ClipperTest, ParsingMissingOptionValues) {
+    const char* argv[] = { // options missing values
         "app",
         "-e", "latin1",
         "--input",
@@ -135,9 +293,13 @@ protected:
         "-l", "134",
         nullptr
     };
-    constexpr static arg_count sizeE3 = 31;
+    EXPECT_NO_THROW({
+        EXPECT_FALSE(cli.parse(31, argv));
+    });
+}
 
-    constexpr static const char* setE4[] = { // invalid option names (some repeated)
+TEST_F(ClipperTest, ParsingInvalidOptionNames) {
+    const char* argv[] = { // invalid option names (some repeated)
         "app",
         "-es", "latin1",
         "-input", "input.txt",
@@ -162,33 +324,13 @@ protected:
         "-l", "134",
         nullptr
     };
-    constexpr static arg_count sizeE4 = 36;
+    EXPECT_NO_THROW({
+        EXPECT_FALSE(cli.parse(36, argv));
+    });
+}
 
-    constexpr static const char* setE5[] = { // missing required (--input)
-        "app",
-        "-e", "latin1",
-        "-h",
-        "--flag",
-        "-o", "output.txt",
-        "-n", "cba",
-        "--count",
-        "-l", "1034",
-        "-s",
-        "-f",
-        "-m",
-        "-o", "output2.txt",
-        "--verbose",
-        "--count", "10",
-        "-f",
-        "--name", "abc",
-        "--encoding", "utf8",
-        "-v",
-        "-l", "134",
-        nullptr
-    };
-    constexpr static arg_count sizeE5 = 28;
-
-    constexpr static const char* setE6[] = { // invalid values
+TEST_F(ClipperTest, ParsingInvalidOptionValues) {
+    const char* argv[] = { // invalid values
         "app",
         "-es", "latin1",
         "--input", "input.txt",
@@ -213,164 +355,86 @@ protected:
         "-l", "-134",
         nullptr
     };
-    constexpr static arg_count sizeE6 = 36;
+    EXPECT_NO_THROW({
+        EXPECT_FALSE(cli.parse(36, argv));
+    });
+}
 
-    constexpr static const char* help[] = { "app", "--help", nullptr };
-    constexpr static arg_count sizeHelp = 2;
-    
-    constexpr static const char* version[] = { "app", "--version", nullptr };
-    constexpr static arg_count sizeVersion = 2;
-
-    constexpr static const char* helpE1[] = {
+TEST_F(ClipperTest, ParsingInvalidUseOfHelpFlag) {
+    const char* argv[] = { // all options (and repeated)
         "app",
+        "-e", "latin1",
+        "--input", "input.txt",
+        "-h",
+        "--flag",
+        "-o", "output.txt",
+        "-i", "input2.txt",
+        "-n", "cba",
+        "--count", "145",
+        "-l", "1034",
+        "-s",
+        "-f",
         "--help",
-        "-i", "input.txt",
-        "-o", "output.txt",
+        "-m", "304.45",
+        "-o", "output2.txt",
+        "--verbose",
         "--count", "10",
         "-f",
+        "--name", "abc",
+        "--encoding", "utf8",
+        "-v",
+        "-l", "134",
         nullptr
     };
-    constexpr static arg_count sizeHelpE1 = 9;
-    
-    constexpr static const char* helpE2[] = {
-        "app",
-        "-i", "input.txt",
-        "-o", "output.txt",
-        "--count", "10",
-        "--help",
-        "-f",
-        nullptr
-    };
-    constexpr static arg_count sizeHelpE2 = 9;
+    EXPECT_NO_THROW({
+        EXPECT_FALSE(cli.parse(35, argv));
+    });
+}
 
-    constexpr static const char* versionE1[] = {
+TEST_F(ClipperTest, ParsingInvalidUseOfVersionFlag) {
+    const char* argv[] = { // all options (and repeated)
         "app",
+        "-e", "latin1",
+        "--input", "input.txt",
+        "-h",
+        "--flag",
+        "-o", "output.txt",
+        "-i", "input2.txt",
+        "-n", "cba",
+        "--count", "145",
+        "-l", "1034",
+        "-s",
+        "-f",
+        "-m", "304.45",
+        "-o", "output2.txt",
+        "--verbose",
+        "--count", "10",
+        "-f",
+        "--name", "abc",
+        "--encoding", "utf8",
+        "-v",
+        "-l", "134",
         "--version",
-        "-i", "input.txt",
-        "-o", "output.txt",
-        "--count", "10",
-        "-f",
         nullptr
     };
-    constexpr static arg_count sizeVersionE1 = 9;
-    
-    constexpr static const char* versionE2[] = {
-        "app",
-        "-i", "input.txt",
-        "-o", "output.txt",
-        "--count", "10",
-        "--version",
-        "-f",
-        nullptr
-    };
-    constexpr static arg_count sizeVersionE2 = 9;
-};
-
-
-TEST_F(ClipperTest, ParsingG1) {
     EXPECT_NO_THROW({
-        EXPECT_TRUE(cli.parse(sizeG1, setG1)) << ParsingWrong();
+        EXPECT_FALSE(cli.parse(35, argv));
     });
 }
-
-TEST_F(ClipperTest, ParsingG2) {
-    EXPECT_NO_THROW({
-        EXPECT_TRUE(cli.parse(sizeG2, setG2)) << ParsingWrong();
-    });
-}
-
-TEST_F(ClipperTest, ParsingG3) {
-    EXPECT_NO_THROW({
-        EXPECT_TRUE(cli.parse(sizeG3, setG3)) << ParsingWrong();
-    });
-}
-
-TEST_F(ClipperTest, ParsingE1) {
-    EXPECT_NO_THROW({
-        EXPECT_FALSE(cli.parse(sizeE1, setE1));
-    });
-}
-
-TEST_F(ClipperTest, ParsingE2) {
-    EXPECT_NO_THROW({
-        EXPECT_FALSE(cli.parse(sizeE2, setE2));
-    });
-}
-
-TEST_F(ClipperTest, ParsingE3) {
-    EXPECT_NO_THROW({
-        EXPECT_FALSE(cli.parse(sizeE3, setE3));
-    });
-}
-
-TEST_F(ClipperTest, ParsingE4) {
-    EXPECT_NO_THROW({
-        EXPECT_FALSE(cli.parse(sizeE4, setE4));
-    });
-}
-
-TEST_F(ClipperTest, ParsingE5) {
-    EXPECT_NO_THROW({
-        EXPECT_FALSE(cli.parse(sizeE5, setE5));
-    });
-}
-
-TEST_F(ClipperTest, ParsingE6) {
-    EXPECT_NO_THROW({
-        EXPECT_FALSE(cli.parse(sizeE6, setE6));
-    });
-}
-
-TEST_F(ClipperTest, ParsingHelp) {
-    EXPECT_NO_THROW({
-        EXPECT_TRUE(cli.parse(sizeHelp, help)) << ParsingWrong();
-    });
-}
-
-TEST_F(ClipperTest, ParsingHelpE1) {
-    EXPECT_NO_THROW({
-        EXPECT_FALSE(cli.parse(sizeHelpE1, helpE1));
-    });
-}
-
-TEST_F(ClipperTest, ParsingHelpE2) {
-    EXPECT_NO_THROW({
-        EXPECT_FALSE(cli.parse(sizeHelpE2, helpE2));
-    });
-}
-
-TEST_F(ClipperTest, ParsingVersion) {
-    EXPECT_NO_THROW({
-        EXPECT_TRUE(cli.parse(sizeVersion, version)) << ParsingWrong();
-    });
-}
-
-TEST_F(ClipperTest, ParsingVersionE1) {
-    EXPECT_NO_THROW({
-        EXPECT_FALSE(cli.parse(sizeVersionE1, versionE1));
-    });
-}
-
-TEST_F(ClipperTest, ParsingVersionE2) {
-    EXPECT_NO_THROW({
-        EXPECT_FALSE(cli.parse(sizeVersionE2, versionE2));
-    });
-}
-
-
-
 
 
 TEST_F(ClipperTest, NoArgs) {
+    const char* argv[] = { "app", nullptr };
+    const char* argv2[] = { "app", "-i", "in.txt", "-o", "out.txt", "-c", "5", "-f", nullptr };
     EXPECT_NO_THROW({
-        EXPECT_FALSE(cli.parse(1, empty));
+        ASSERT_FALSE(cli.parse(1, argv));
         EXPECT_TRUE(cli.no_args());
 
         cli.allow_no_args();
-        EXPECT_TRUE(cli.parse(1, empty));
+        ASSERT_TRUE(cli.parse(1, argv));
         EXPECT_TRUE(cli.no_args());
         
-        cli.parse(sizeG1, setG1);
-        EXPECT_FALSE(cli.no_args());
+        cli.parse(8, argv2);
+        ASSERT_FALSE(cli.no_args());
     });
 }
