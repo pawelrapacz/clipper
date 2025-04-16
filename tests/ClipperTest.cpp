@@ -17,6 +17,9 @@ protected:
         cli.add_flag("--verbose", "-v").set(f_v);
         cli.add_flag("-s").set(s_v);
         cli.add_flag("-h").set(h_v);
+
+        cli.help_flag("--help").set(help_v);
+        cli.version_flag("--version").set(version_v);
     }
 
     std::string ParsingWrong() {
@@ -26,6 +29,7 @@ protected:
         return joined;
     }
     
+    bool help_v, version_v;
     bool f_v, v_v, s_v, h_v;
     std::string i_v, n_v, e_v;
     std::filesystem::path o_v;
@@ -210,6 +214,56 @@ protected:
         nullptr
     };
     constexpr static arg_count sizeE6 = 36;
+
+    constexpr static const char* help[] = { "app", "--help", nullptr };
+    constexpr static arg_count sizeHelp = 2;
+    
+    constexpr static const char* version[] = { "app", "--version", nullptr };
+    constexpr static arg_count sizeVersion = 2;
+
+    constexpr static const char* helpE1[] = {
+        "app",
+        "--help",
+        "-i", "input.txt",
+        "-o", "output.txt",
+        "--count", "10",
+        "-f",
+        nullptr
+    };
+    constexpr static arg_count sizeHelpE1 = 9;
+    
+    constexpr static const char* helpE2[] = {
+        "app",
+        "-i", "input.txt",
+        "-o", "output.txt",
+        "--count", "10",
+        "--help",
+        "-f",
+        nullptr
+    };
+    constexpr static arg_count sizeHelpE2 = 9;
+
+    constexpr static const char* versionE1[] = {
+        "app",
+        "--version",
+        "-i", "input.txt",
+        "-o", "output.txt",
+        "--count", "10",
+        "-f",
+        nullptr
+    };
+    constexpr static arg_count sizeVersionE1 = 9;
+    
+    constexpr static const char* versionE2[] = {
+        "app",
+        "-i", "input.txt",
+        "-o", "output.txt",
+        "--count", "10",
+        "--version",
+        "-f",
+        nullptr
+    };
+    constexpr static arg_count sizeVersionE2 = 9;
 };
 
 
@@ -266,6 +320,45 @@ TEST_F(ClipperTest, ParsingE6) {
         EXPECT_FALSE(cli.parse(sizeE6, setE6));
     });
 }
+
+TEST_F(ClipperTest, ParsingHelp) {
+    EXPECT_NO_THROW({
+        EXPECT_TRUE(cli.parse(sizeHelp, help)) << ParsingWrong();
+    });
+}
+
+TEST_F(ClipperTest, ParsingHelpE1) {
+    EXPECT_NO_THROW({
+        EXPECT_FALSE(cli.parse(sizeHelpE1, helpE1));
+    });
+}
+
+TEST_F(ClipperTest, ParsingHelpE2) {
+    EXPECT_NO_THROW({
+        EXPECT_FALSE(cli.parse(sizeHelpE2, helpE2));
+    });
+}
+
+TEST_F(ClipperTest, ParsingVersion) {
+    EXPECT_NO_THROW({
+        EXPECT_TRUE(cli.parse(sizeVersion, version)) << ParsingWrong();
+    });
+}
+
+TEST_F(ClipperTest, ParsingVersionE1) {
+    EXPECT_NO_THROW({
+        EXPECT_FALSE(cli.parse(sizeVersionE1, versionE1));
+    });
+}
+
+TEST_F(ClipperTest, ParsingVersionE2) {
+    EXPECT_NO_THROW({
+        EXPECT_FALSE(cli.parse(sizeVersionE2, versionE2));
+    });
+}
+
+
+
 
 
 TEST_F(ClipperTest, NoArgs) {
