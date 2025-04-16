@@ -35,10 +35,10 @@ protected:
 
     clipper cli;
 
-    constexpr static const char* empty[2] = { "app", nullptr };
+    constexpr static const char* empty[] = { "app", nullptr };
 
     // G is good E is error
-    constexpr static const char* setG1[9] = { // only required options
+    constexpr static const char* setG1[] = { // only required options
         "app",
         "-i", "input.txt",
         "-o", "output.txt",
@@ -48,7 +48,7 @@ protected:
     };
     constexpr static arg_count sizeG1 = 8;
 
-    const char* setG2[14] = { // some options repeated
+    constexpr static const char* setG2[] = { // some options repeated
         "app",
         "-i", "input.txt",
         "-o", "output.txt",
@@ -61,7 +61,7 @@ protected:
     };
     constexpr static arg_count sizeG2 = 13;
 
-    constexpr static const char* setG3[35] = { // all options (and repeated)
+    constexpr static const char* setG3[] = { // all options (and repeated)
         "app",
         "-e", "latin1",
         "--input", "input.txt",
@@ -87,7 +87,7 @@ protected:
     };
     constexpr static arg_count sizeG3 = 34;
 
-    constexpr static const char* setE1[7] = { // no required options
+    constexpr static const char* setE1[] = { // no required options
         "app",
         "-n", "aa",
         "-h",
@@ -96,7 +96,7 @@ protected:
     };
     constexpr static arg_count sizeE1 = 6;
 
-    constexpr static const char* setE2[10] = { // no required options
+    constexpr static const char* setE2[] = { // no required options
         "app",
         "-n", "aa",
         "-h",
@@ -107,7 +107,7 @@ protected:
     };
     constexpr static arg_count sizeE2 = 9;
 
-    constexpr static const char* setE3[32] = { // options missing values
+    constexpr static const char* setE3[] = { // options missing values
         "app",
         "-e", "latin1",
         "--input",
@@ -133,7 +133,7 @@ protected:
     };
     constexpr static arg_count sizeE3 = 31;
 
-    constexpr static const char* setE4[37] = { // invalid option names (some repeated)
+    constexpr static const char* setE4[] = { // invalid option names (some repeated)
         "app",
         "-es", "latin1",
         "-input", "input.txt",
@@ -160,7 +160,7 @@ protected:
     };
     constexpr static arg_count sizeE4 = 36;
 
-    constexpr static const char* setE5[29] = { // missing required (--input)
+    constexpr static const char* setE5[] = { // missing required (--input)
         "app",
         "-e", "latin1",
         "-h",
@@ -184,7 +184,7 @@ protected:
     };
     constexpr static arg_count sizeE5 = 28;
 
-    constexpr static const char* setE6[37] = { // invalid values
+    constexpr static const char* setE6[] = { // invalid values
         "app",
         "-es", "latin1",
         "--input", "input.txt",
@@ -212,80 +212,60 @@ protected:
     constexpr static arg_count sizeE6 = 36;
 };
 
-// TEST_F(ClipperTest, Parsing) {
-//     EXPECT_NO_THROW({
-//         auto JoinWrong = [](const std::vector<std::string>& w) -> std::string {
-//             std::string joined;
-//             for (auto& i : w)
-//                 joined += i + '\n';
-//             return joined;
-//         };
-//         EXPECT_TRUE(cli.parse(sizeG1, setG1));
-//         EXPECT_TRUE(cli.parse(sizeG2, setG2));
-//         EXPECT_TRUE(cli.parse(sizeG3, setG3));
-        
-//         EXPECT_FALSE(cli.parse(sizeE1, setE1));
-//         EXPECT_FALSE(cli.parse(sizeE2, setE2));
-//         EXPECT_FALSE(cli.parse(sizeE3, setE3));
-//         EXPECT_FALSE(cli.parse(sizeE4, setE4));
-//         EXPECT_FALSE(cli.parse(sizeE5, setE5));
-//         EXPECT_FALSE(cli.parse(sizeE6, setE6));
-//     });
-// }
 
-// TEST_F(ClipperTest, ParsingG1) {
-//     EXPECT_NO_THROW({
-//         EXPECT_TRUE(cli.parse(sizeG1, setG1)) << ParsingWrong();
-//     });
-// }
+TEST_F(ClipperTest, ParsingG1) {
+    EXPECT_NO_THROW({
+        EXPECT_TRUE(cli.parse(sizeG1, setG1)) << ParsingWrong();
+    });
+}
 
-// TEST_F(ClipperTest, ParsingG2) {
-//     EXPECT_NO_THROW({
-//         EXPECT_TRUE(cli.parse(sizeG2, setG2)) << ParsingWrong();
-//     });
-// }
+TEST_F(ClipperTest, ParsingG2) {
+    EXPECT_NO_THROW({
+        EXPECT_TRUE(cli.parse(sizeG2, setG2)) << ParsingWrong();
+    });
+}
 
-// TEST_F(ClipperTest, ParsingG3) {
-//     EXPECT_NO_THROW({
-//         EXPECT_TRUE(cli.parse(sizeG3, setG3)) << ParsingWrong();
-//     });
-// }
+TEST_F(ClipperTest, ParsingG3) {
+    EXPECT_NO_THROW({
+        EXPECT_TRUE(cli.parse(sizeG3, setG3)) << ParsingWrong();
+    });
+}
 
-// TEST_F(ClipperTest, ParsingE1) {
-//     EXPECT_NO_THROW({
-//         EXPECT_FALSE(cli.parse(sizeE1, setE1));
-//     });
-// }
+TEST_F(ClipperTest, ParsingE1) {
+    EXPECT_NO_THROW({
+        EXPECT_FALSE(cli.parse(sizeE1, setE1));
+    });
+}
 
-// TEST_F(ClipperTest, ParsingE2) {
-//     EXPECT_NO_THROW({
-//         EXPECT_FALSE(cli.parse(sizeE2, setE2));
-//     });
-// }
+TEST_F(ClipperTest, ParsingE2) {
+    EXPECT_NO_THROW({
+        EXPECT_FALSE(cli.parse(sizeE2, setE2));
+    });
+}
 
-// TEST_F(ClipperTest, ParsingE3) {
-//     EXPECT_NO_THROW({
-//         EXPECT_FALSE(cli.parse(sizeE3, setE3));
-//     });
-// }
+TEST_F(ClipperTest, ParsingE3) {
+    EXPECT_NO_THROW({
+        EXPECT_FALSE(cli.parse(sizeE3, setE3));
+    });
+}
 
-// TEST_F(ClipperTest, ParsingE4) {
-//     EXPECT_NO_THROW({
-//         EXPECT_FALSE(cli.parse(sizeE4, setE4));
-//     });
-// }
+TEST_F(ClipperTest, ParsingE4) {
+    EXPECT_NO_THROW({
+        EXPECT_FALSE(cli.parse(sizeE4, setE4));
+    });
+}
 
-// TEST_F(ClipperTest, ParsingE5) {
-//     EXPECT_NO_THROW({
-//         EXPECT_FALSE(cli.parse(sizeE5, setE5));
-//     });
-// }
+TEST_F(ClipperTest, ParsingE5) {
+    EXPECT_NO_THROW({
+        EXPECT_FALSE(cli.parse(sizeE5, setE5));
+    });
+}
 
-// TEST_F(ClipperTest, ParsingE6) {
-//     EXPECT_NO_THROW({
-//         EXPECT_FALSE(cli.parse(sizeE6, setE6));
-//     });
-// }
+TEST_F(ClipperTest, ParsingE6) {
+    EXPECT_NO_THROW({
+        EXPECT_FALSE(cli.parse(sizeE6, setE6));
+    });
+}
 
 
 TEST_F(ClipperTest, NoArgs) {
