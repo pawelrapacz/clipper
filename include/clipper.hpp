@@ -94,6 +94,14 @@ namespace CLI
 
     class clipper;
 
+
+    /// \internal
+    /// \brief Represents an option type.
+    enum class otype : unsigned char {
+        flag,
+        option
+    };
+
     /**
      *  \internal
      *  \brief Allows casting option pointers.
@@ -171,6 +179,10 @@ namespace CLI
          */
         virtual std::string value_info() const noexcept
         { return ""; };
+
+        /// \internal
+        /// \brief Gets the type of an option.
+        virtual constexpr otype type() const noexcept = 0;
     };
 
 
@@ -391,6 +403,11 @@ namespace CLI
                 throw std::logic_error("Value is not allowed");
             }
         }
+
+        /// \internal
+        /// \brief Gets the type of an option.
+        constexpr otype type() const noexcept override
+        { return otype::option; }
         
     protected:
         /**
@@ -503,6 +520,11 @@ namespace CLI
             _is_set = true;
         }
 
+        /// \internal
+        /// \brief Gets the type of an option.
+        constexpr otype type() const noexcept override
+        { return otype::flag; }
+
     private:
         bool* _ptr = nullptr; ///< Pointer where to write parsed value (state) to.
     };
@@ -522,6 +544,7 @@ namespace CLI
      */
     class clipper {
         using argv_ptr = const char* const* const; ///< Type of an array with arguments pointer.
+        struct token { std::string_view option, value; }; ///< Cli option token.
     public:
         /// \brief Default constructor.
         clipper() = default;
@@ -828,50 +851,30 @@ namespace CLI
          *  \param argv Arguments.
          *  \return True if arguments were parsed successfully, false otherwise.
          */
-        inline bool parse(int argc, argv_ptr argv) {
+        inline bool parse(arg_count argc, argv_ptr argv) {
             _args_count = argc;
-            bool err = false;
+            
+            if (argc < 2)
+                return _allow_no_args; // success if allowed, failure if not
+            else if (argc == 2 && check_for_helper_flags(argv[1])) // check if help or version flag was used (propery)
+                return true;
+            
+
             auto req_count = count_req();
-        
+            auto tokens = tokenize(argc, argv);
 
-            if (_allow_no_args && argc == 1)
-                return !err;
+            for (auto t : tokens) {
+                if (is_req_and_not_set(t.option))
+                    req_count--;
 
-            std::queue<std::string_view> args;
-            for (int i = 1; i < argc; i++) // argv[0] is the command name, it is meant to be omitted
-                args.push(argv[i]);
-
-
-            if (args.size() == 1 && args.front() == _help_flag) {
-                _help_flag.hndl = true; 
-                return true;
-            }
-
-            if (args.size() == 1 && args.front() == _version_flag) {
-                _version_flag.hndl = true;
-                return true;
-            }
-
-            while (not args.empty()) {
-                if (_names.contains(args.front())) {
-                    if (_options[_names[args.front()]]->req() && not _options[_names[args.front()]]->is_set())
-                        req_count--;
-
-                    set_option(args, err); // it pops the option and its value
-                }
-                else {
-                    _wrong.emplace_back("[" + std::string(args.front()) + "] Unkonown argument");
-                    err = true;
-                    args.pop(); // necessary to properly continue
-                }
+                set_option(t);
             }
 
             if (req_count) {
                 _wrong.emplace_back("Missing required argument(s) " + std::to_string(req_count));
-                err = true;
             }
 
-            return !err;
+            return _wrong.empty();
         }
 
         /**
@@ -882,27 +885,50 @@ namespace CLI
         { return _wrong; }
 
     private:
-        /// \internal
-        /// \brief Parses value of an option/flag and catches errors.
-        inline void set_option(std::queue<std::string_view>& args, bool& error) {
-            auto& opt = _options[_names[args.front()]];
-            std::string_view temp_option_name = args.front();
-            args.pop();
+        /**
+         *  \internal
+         *  \brief Creates a array of option + value tokens.
+         *  \param argc Argument count.
+         *  \param argv Arguments.
+         *  \see token
+         */
+        inline std::vector<token> tokenize(arg_count argc, argv_ptr argv) {
+            using namespace std::string_literals;
+            std::vector<token> tokens;
+            tokens.reserve(argc);
 
-            if ( auto optFlag = dynamic_cast<option<bool>*>(opt.get()) ) {
-                *optFlag = true;
-            }
-            else if (args.empty()) {
-                _wrong.emplace_back("[" + std::string(temp_option_name) + "] Missing option value");
-                error = true;
-            }
-            else {
-                try { opt->assign(args.front()); }
-                catch (...) {
-                    _wrong.emplace_back("[" + std::string(temp_option_name) + "] Value " + std::string(args.front()) + " is not allowed \n\t{ " + opt->detailed_synopsis() + "  " + opt->doc() + " }");
-                    error = true;
+            for (arg_count i = 1; i < argc; i++) {
+                if (option_exists(argv[i])) {
+                    if (get_option(argv[i])->type() == otype::flag)
+                        tokens.emplace_back(argv[i]);
+                    else if (++i < argc)
+                        tokens.emplace_back(argv[i - 1], argv[i]);
+                    else
+                        _wrong.emplace_back("["s + argv[i - 1] + "] Missing option value");
                 }
-                args.pop();
+                else {
+                    _wrong.emplace_back("["s + argv[i] + "] Unkonown argument");
+                }
+            }
+
+            return tokens;
+        }
+
+        /**
+         * \internal
+         * \brief Sets an option/flag.
+         * \param t Option + value token
+         * \see token
+         */
+        inline void set_option(token t) {
+            using namespace std::string_literals;
+
+            try {
+                get_option(t.option)->assign(t.value);
+            }
+            catch (...) {
+                auto& optn = get_option(t.option);
+                _wrong.emplace_back("["s + t.option.data() + "] Value " + t.value.data() + " is not allowed \n\t{ " + optn->detailed_synopsis() + "  " + optn->doc() + " }");
             }
         }
 
@@ -916,10 +942,41 @@ namespace CLI
 
             return count;
         }
+        
+        /// \internal
+        /// \brief Gets an (existing) option with the given key (name).
+        inline bool option_exists(std::string_view key) const
+        { return _names.contains(key); }
+
+        /// \internal
+        /// \brief Gets an (existing) option with the given key (name).
+        inline std::unique_ptr<option_base>& get_option(std::string_view key)
+        { return _options[_names.at(key)]; }
+
+        /// \internal
+        /// \brief Checks if an (existing) option is required and not set.
+        inline bool is_req_and_not_set(std::string_view key) const {
+            auto& optn = _options[_names.at(key)];
+            return optn->req() and not optn->is_set();
+        }
+        
+        /// \internal
+        /// \brief Checks for helper flags and sets them if encourtered.
+        inline bool check_for_helper_flags(std::string_view val) {
+            if (val == _help_flag) {
+                _help_flag.hndl = true; 
+                return true;
+            }
+            else if (val == _version_flag) {
+                _version_flag.hndl = true;
+                return true;
+            }
+            return false;
+        }
 
     private:
-      /* internal types */
-        using option_name_map = std::unordered_map<std::string_view, std::size_t>; ///< Container for storing option names.
+    /* internal types */
+    using option_name_map = std::unordered_map<std::string_view, std::size_t>; ///< Container for storing option names.
         using option_vec = std::vector<std::unique_ptr<option_base>>; ///< Container for storing options.
 
         /// \brief Contains a \ref option<bool> "flag" information.
@@ -953,7 +1010,7 @@ namespace CLI
         std::string_view _web_link;
         helper_flag _help_flag;
         helper_flag _version_flag;
-        int _args_count { }; ///< Contains the argument count.
+        arg_count _args_count { }; ///< Contains the argument count.
         bool _allow_no_args { false }; ///< Determines whether the app can be used without giving any arguments. \ref allow_no_args() "See more"
         option_name_map _names; ///< Contains option names.
         option_vec _options; ///< Contains all options.
