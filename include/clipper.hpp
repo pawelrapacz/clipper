@@ -108,7 +108,6 @@ namespace CLI
      *  \see option<Tp> option<bool> clipper
      */
     class option_base {
-        friend class clipper;
     protected:
         std::string_view _vname; ///< Name of the type that the option holds.
         std::string _doc; ///< Documentation of the option.
@@ -193,7 +192,6 @@ namespace CLI
      */
     template<option_types Tp>
     class option : public option_base {
-        friend class clipper;
     public:
         /// \brief Type of function that checks whether the given value meets some requirements
         using predicate = bool (*)(const Tp&);
@@ -448,7 +446,6 @@ namespace CLI
      */
     template<>
     class option<bool> : public option_base {
-        friend class clipper;
     public:
         using option_base::doc;
 
@@ -988,14 +985,14 @@ namespace CLI
              *  \return True if the given string is equal to name or alt_name, false otherwise.
              */
             bool operator==(std::string_view str) const noexcept
-            { return hndl->name == str or hndl->alt_name == str; }
+            { return hndl != nullptr and (hndl->name == str or hndl->alt_name == str); }
 
             /**
              * \brief Checks whether the option is set (name is not empty).
              * \return True if opiton is set, flase otherwise.
              */
             bool is_used() const noexcept
-            { return not hndl->name.empty(); }
+            { return hndl != nullptr; }
         };
 
         std::string_view _app_name;
