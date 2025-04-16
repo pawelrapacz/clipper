@@ -735,18 +735,16 @@ namespace CLI
          *  \see    option<bool>
          */
         option<bool>& help_flag(std::string_view name, std::string_view alt_name = "") {
-            _help_flag.name = name;
-            _help_flag.alt_name = alt_name;
-            _help_flag.hndl.doc("displays help");
-            return _help_flag.hndl;
+            _help_flag.hndl = std::make_unique<option<bool>>(name, alt_name);
+            _help_flag.hndl->doc("Displays help");
+            return *_help_flag.hndl;
         }
-
+        
         /// \copydoc help_flag
         option<bool>& version_flag(std::string_view name, std::string_view alt_name = "") {
-            _version_flag.name = name;
-            _version_flag.alt_name = alt_name;
-            _version_flag.hndl.doc("displays version information");
-            return _version_flag.hndl;
+            _version_flag.hndl = std::make_unique<option<bool>>(name, alt_name);
+            _version_flag.hndl->doc("Displays version information");
+            return *_version_flag.hndl;
         }
 
         /**
@@ -768,10 +766,10 @@ namespace CLI
             std::ostringstream options;
             
             if (_help_flag.is_used())
-                add_help(&_help_flag.hndl, flags);
+                add_help(_help_flag.hndl.get(), flags);
 
             if (_version_flag.is_used())
-                add_help(&_version_flag.hndl, flags);
+                add_help(_version_flag.hndl.get(), flags);
 
             for (auto& opt : _options) {
                 if (dynamic_cast<option<bool>*>(opt.get()))
@@ -964,11 +962,11 @@ namespace CLI
         /// \brief Checks for helper flags and sets them if encourtered.
         inline bool check_for_helper_flags(std::string_view val) {
             if (val == _help_flag) {
-                _help_flag.hndl = true; 
+                *_help_flag.hndl = true; 
                 return true;
             }
             else if (val == _version_flag) {
-                _version_flag.hndl = true;
+                *_version_flag.hndl = true;
                 return true;
             }
             return false;
@@ -982,9 +980,7 @@ namespace CLI
         /// \brief Contains a \ref option<bool> "flag" information.
         /// \brief Primarly for version and help flags.
         struct helper_flag {
-            std::string_view name; ///< Name of the flag.
-            std::string_view alt_name; ///< Alternative name of the flag.
-            option<bool> hndl {name, alt_name}; ///< \ref option<bool> "Flag" handle.
+            std::unique_ptr<option<bool>> hndl; ///< \ref option<bool> "Flag" handle.
 
             /**
              *  \brief Compares string with name and alt_name.
@@ -992,14 +988,14 @@ namespace CLI
              *  \return True if the given string is equal to name or alt_name, false otherwise.
              */
             bool operator==(std::string_view str) const noexcept
-            { return name == str or alt_name == str; }
+            { return hndl->name == str or hndl->alt_name == str; }
 
             /**
              * \brief Checks whether the option is set (name is not empty).
              * \return True if opiton is set, flase otherwise.
              */
             bool is_used() const noexcept
-            { return not name.empty(); }
+            { return not hndl->name.empty(); }
         };
 
         std::string_view _app_name;
