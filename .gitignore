@@ -14,7 +14,6 @@ _deps
 debug/
 bin/
 release/
-test/
 build/
 docs/*
 !docs/[Dd]oxyfile
