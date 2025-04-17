@@ -11,7 +11,7 @@
  *  \file       clipper.hpp
  *  \brief      clipper is a simple, header-only library that handles commad line arguments and parsing.
  *  \author     Paweł Rapacz
- *  \version    1.1.2
+ *  \version    1.2.0
  *  \date       2024
  *  \copyright  MIT License
  */
