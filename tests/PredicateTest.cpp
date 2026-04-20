@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "clipper.hpp"
+#include <clipper/clipper.hpp>
 
 TEST(PredicateTest, between) {
   EXPECT_FALSE((CLI::between<1ull,10ull>(1)));

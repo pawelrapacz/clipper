@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "clipper.hpp"
+#include <clipper/clipper.hpp>
 using namespace CLI;
 
 class OptionTest : public testing::Test {
