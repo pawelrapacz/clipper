@@ -39,7 +39,7 @@ It is a learning project, that I took on to improve my C++ 📈.
 
 ### Get clipper
 
-Firstly [download](https://github.com/pawelrapacz/clipper/releases/latest) the library and include `clipper.hpp` in your `.cpp` file. Now just use it!
+Firstly [download](https://github.com/pawelrapacz/clipper/releases/latest) the library and include `clipper/clipper.hpp` in your `.cpp` file. Now just use it!
 
 
 ### Usage
@@ -47,7 +47,7 @@ Firstly [download](https://github.com/pawelrapacz/clipper/releases/latest) the l
 To begin you need to create an instance of `CLI::clipper` class.
 
 ```cpp
-CLI:clipper
+CLI:clipper cli;
 ```
 
 Then you can add flags and options.<br>
@@ -134,7 +134,7 @@ std::cout << cli.wrong().front();
 ### Example
 
 ```cpp
-#include "clipper.hpp"
+#include <clipper/clipper.hpp>
 #include <iostream>
 
 int main(CLI::arg_count argc, CLI::args argv) {
